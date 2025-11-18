@@ -1,0 +1,64 @@
+{
+	"name": "@harperdb/mqtt-broker-interop-plugin",
+	"version": "1.0.0",
+	"description": "Harper plugin to expand internal MQTT broker with interopability features.",
+	"license": "Apache-2.0",
+	"author": {
+		"name": "HarperDB, Inc.",
+		"email": "opensource@harperdb.io",
+		"url": "https://harper.fast/"
+	},
+	"contributors": [],
+	"homepage": "https://harper.fast/",
+	"keywords": [
+		"harperdb",
+		"harper",
+		"plugin"
+	],
+	"type": "module",
+	"main": "dist/index.js",
+	"exports": {
+		".": "./src/index.js",
+		"./config": "./config.yaml"
+	},
+	"files": [
+		"dist/",
+		"schema/",
+		"config.yaml",
+		"LICENSE",
+		"README.md"
+	],
+	"scripts": {
+		"test": "node --test test/config-loader.test.js test/sync-engine.test.js test/bigquery-client.test.js test/generator.test.js test/multi-table-orchestrator.test.js",
+		"test:coverage": "node --test --experimental-test-coverage test/config-loader.test.js test/sync-engine.test.js test/bigquery-client.test.js test/generator.test.js test/multi-table-orchestrator.test.js",
+		"test:config": "node examples/test-bigquery-config.js",
+		"lint": "eslint .",
+		"format": "prettier .",
+		"format:check": "npm run format -- --check",
+		"format:write": "npm run format -- --write",
+		"prepare": "husky"
+	},
+	"dependencies": {
+		"yaml": "^2.8.1"
+	},
+	"devDependencies": {
+		"@harperdb/code-guidelines": "^0.0.5",
+		"eslint": "^9.35.0",
+		"husky": "^9.1.7",
+		"prettier": "^3.6.2"
+	},
+	"engines": {
+		"node": ">=20"
+	},
+	"devEngines": {
+		"runtime": {
+			"name": "node",
+			"version": ">=20",
+			"onFail": "error"
+		},
+		"packageManager": {
+			"name": "npm",
+			"onFail": "error"
+		}
+	}
+}
