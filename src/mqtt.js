@@ -12,6 +12,7 @@ export const topicRegistry = new Set();
  */
 export class MqttMetrics {
   constructor() {
+    server.logger.info('[MQTT-Broker-Interop-Plugin:MQTT]: Initializing MQTT metrics tracking');
     this.startTime = new Date();
 
     this.clients = {
@@ -80,19 +81,40 @@ export class MqttMetrics {
 
     // Update system metrics periodically
     this._updateSystemMetrics();
-    setInterval(() => this._updateSystemMetrics(), 60000); // Update every minute
+    this._metricsInterval = setInterval(() => this._updateSystemMetrics(), 60000); // Update every minute
+    // Allow Node.js to exit if this is the only thing keeping it alive (important for tests)
+    if (this._metricsInterval.unref) {
+      this._metricsInterval.unref();
+    }
+  }
+
+  /**
+   * Stop the metrics update interval (useful for testing)
+   */
+  stopMetricsUpdates() {
+    if (this._metricsInterval) {
+      clearInterval(this._metricsInterval);
+      this._metricsInterval = null;
+    }
+  }
+
+  onConnecting(socket) {
+    server.logger.debug('[MQTT-Broker-Interop-Plugin:MQTT]: Client connecting');
   }
 
   onConnect(clientId, persistent) {
+    server.logger.debug(`[MQTT-Broker-Interop-Plugin:MQTT]: Client connected - clientId: ${clientId}, persistent: ${persistent}`);
     this.clients.connected++;
     this.clients.total = this.clients.connected + this.clients.disconnected;
 
     if (this.clients.connected > this.clients.maximum) {
       this.clients.maximum = this.clients.connected;
+      server.logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: New maximum clients reached: ${this.clients.maximum}`);
     }
   }
 
   onDisconnect(clientId, persistent) {
+    server.logger.debug(`[MQTT-Broker-Interop-Plugin:MQTT]: Client disconnected - clientId: ${clientId}, persistent: ${persistent}`);
     this.clients.connected--;
 
     if (persistent) {
@@ -103,55 +125,67 @@ export class MqttMetrics {
   }
 
   onPublishReceived(message, byteCount) {
+    server.logger.trace(`[MQTT-Broker-Interop-Plugin:MQTT]: Message received - topic: ${message.topic}, bytes: ${byteCount}`);
     this.messages.received++;
     this.messages.publishReceived++;
     this.bytes.received += byteCount;
   }
 
   onPublishSent(message, byteCount) {
+    server.logger.trace(`[MQTT-Broker-Interop-Plugin:MQTT]: Message sent - topic: ${message.topic}, bytes: ${byteCount}`);
     this.messages.sent++;
     this.messages.publishSent++;
     this.bytes.sent += byteCount;
   }
 
   onSubscribe(clientId, topic) {
+    server.logger.debug(`[MQTT-Broker-Interop-Plugin:MQTT]: Client subscribed - clientId: ${clientId}, topic: ${topic}`);
     this.subscriptions.count++;
   }
 
   onUnsubscribe(clientId, topic) {
+    server.logger.debug(`[MQTT-Broker-Interop-Plugin:MQTT]: Client unsubscribed - clientId: ${clientId}, topic: ${topic}`);
     this.subscriptions.count--;
   }
 
   onRetainedMessageAdded() {
+    server.logger.debug('[MQTT-Broker-Interop-Plugin:MQTT]: Retained message added');
     this.retained.count++;
   }
 
   onRetainedMessageRemoved() {
+    server.logger.debug('[MQTT-Broker-Interop-Plugin:MQTT]: Retained message removed');
     this.retained.count--;
   }
 
   onMessageDropped() {
+    server.logger.warn('[MQTT-Broker-Interop-Plugin:MQTT]: Message dropped');
     this.messages.publishDropped++;
   }
 
   onMessageInflight(delta) {
+    server.logger.trace(`[MQTT-Broker-Interop-Plugin:MQTT]: Message inflight delta: ${delta}, total: ${this.messages.inflight + delta}`);
     this.messages.inflight += delta;
   }
 
   onMessageStored(delta) {
+    server.logger.trace(`[MQTT-Broker-Interop-Plugin:MQTT]: Message stored delta: ${delta}, total: ${this.messages.stored + delta}`);
     this.messages.stored += delta;
   }
 
   onExpiredClient() {
+    server.logger.info('[MQTT-Broker-Interop-Plugin:MQTT]: Client session expired');
     this.clients.expired++;
   }
 
   _updateSystemMetrics() {
+    server.logger.trace('[MQTT-Broker-Interop-Plugin:MQTT]: Updating system metrics');
     // Update heap metrics
     if (process.memoryUsage) {
       const memUsage = process.memoryUsage();
       this.heap.current = memUsage.heapUsed;
       this.heap.maximum = Math.max(this.heap.maximum, memUsage.heapUsed);
+      server.logger.trace(`[MQTT-Broker-Interop-Plugin:MQTT]: Heap usage - current: ${this.heap.current}, maximum: ${this.heap.maximum}`);
     }
 
     // Calculate load averages
@@ -218,7 +252,6 @@ export const metrics = new MqttMetrics();
 // HarperDB Server and MQTT Integration
 // ============================================================================
 let harperServer = null;
-let harperLogger = null;
 let mqttPublishTable = null;
 
 /**
@@ -238,6 +271,7 @@ export class SysTopics {
    */
   get(request) {
     const topic = request.path;
+    server.logger.trace(`[MQTT-Broker-Interop-Plugin:MQTT]: $SYS topic request - ${topic}`);
 
     // Static topics
     if (topic === '$SYS/broker/version') {
@@ -405,6 +439,7 @@ export class SysTopics {
     }
 
     // Unknown topic
+    server.logger.warn(`[MQTT-Broker-Interop-Plugin:MQTT]: Unknown $SYS topic requested - ${topic}`);
     return null;
   }
 
@@ -412,6 +447,7 @@ export class SysTopics {
    * Get HarperDB version string
    */
   getVersion() {
+    server.logger.trace('[MQTT-Broker-Interop-Plugin:MQTT]: Getting broker version');
     // Try to get HarperDB version from various possible sources
     if (harperServer?.version) {
       return harperServer.version;
@@ -437,27 +473,28 @@ export class SysTopics {
  * @param {Object} logger - Logger instance
  * @param {number} sysInterval - Update interval in seconds
  */
-export function setupMqttMonitoring(server, logger, sysInterval) {
+export function setupMqttMonitoring(server, _logger, _sysInterval) {
+  server.logger.info('[MQTT-Broker-Interop-Plugin:MQTT]: Setting up MQTT monitoring');
   if (!server?.mqtt?.events) {
-    logger.warn('MQTT events not available on this thread');
+    server.logger.warn('[MQTT-Broker-Interop-Plugin:MQTT]: MQTT events not available on this thread');
     return;
   }
 
   harperServer = server;
-  harperLogger = logger;
   const mqttEvents = server.mqtt.events;
+  server.logger.debug('[MQTT-Broker-Interop-Plugin:MQTT]: MQTT events object obtained');
 
   // Monitor client connections
   mqttEvents.on('connected', (data) => {
     const { clientId, username, cleanSession } = data;
-    logger.debug(`MQTT client connected: ${clientId}`);
+    server.logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: Client connected - clientId: ${clientId}, username: ${username}, cleanSession: ${cleanSession}`);
     metrics.onConnect(clientId, !cleanSession);
   });
 
   // Monitor client disconnections
   mqttEvents.on('disconnected', (data) => {
     const { clientId, cleanSession } = data;
-    logger.debug(`MQTT client disconnected: ${clientId}`);
+    server.logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: Client disconnected - clientId: ${clientId}, cleanSession: ${cleanSession}`);
     metrics.onDisconnect(clientId, !cleanSession);
   });
 
@@ -465,12 +502,13 @@ export function setupMqttMonitoring(server, logger, sysInterval) {
   mqttEvents.on('publish', (data) => {
     const { topic, payload, clientId } = data;
     const byteCount = payload ? Buffer.byteLength(payload) : 0;
-    logger.debug(`MQTT publish received on topic ${topic}: ${byteCount} bytes`);
+    server.logger.debug(`[MQTT-Broker-Interop-Plugin:MQTT]: Publish received - clientId: ${clientId}, topic: ${topic}, bytes: ${byteCount}`);
     metrics.onPublishReceived({ topic, payload }, byteCount);
 
     // Track topic in registry (exclude $SYS topics from general registry)
     if (topic && !topic.startsWith('$SYS/')) {
       topicRegistry.add(topic);
+      server.logger.trace(`[MQTT-Broker-Interop-Plugin:MQTT]: Topic added to registry: ${topic}`);
     }
   });
 
@@ -479,11 +517,12 @@ export function setupMqttMonitoring(server, logger, sysInterval) {
     const { clientId, topics } = data;
     if (Array.isArray(topics)) {
       topics.forEach(topic => {
-        logger.debug(`MQTT client ${clientId} subscribed to ${topic}`);
+        server.logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: Subscription - clientId: ${clientId}, topic: ${topic}`);
         metrics.onSubscribe(clientId, topic);
 
         // Check if it's a $SYS topic subscription
         if (topic.startsWith('$SYS/') || topic === '$SYS/#') {
+          server.logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: $SYS topic subscription detected - clientId: ${clientId}, topic: ${topic}`);
           onSysTopicSubscribe(clientId, topic);
         }
       });
@@ -495,11 +534,12 @@ export function setupMqttMonitoring(server, logger, sysInterval) {
     const { clientId, topics } = data;
     if (Array.isArray(topics)) {
       topics.forEach(topic => {
-        logger.debug(`MQTT client ${clientId} unsubscribed from ${topic}`);
+        server.logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: Unsubscription - clientId: ${clientId}, topic: ${topic}`);
         metrics.onUnsubscribe(clientId, topic);
 
         // Check if it's a $SYS topic unsubscription
         if (topic.startsWith('$SYS/') || topic === '$SYS/#') {
+          server.logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: $SYS topic unsubscription detected - clientId: ${clientId}, topic: ${topic}`);
           onSysTopicUnsubscribe(clientId, topic);
         }
       });
@@ -509,17 +549,17 @@ export function setupMqttMonitoring(server, logger, sysInterval) {
   // Monitor retained message events if available
   if (mqttEvents.on) {
     mqttEvents.on('retained-added', (data) => {
-      logger.debug(`Retained message added`);
+      server.logger.debug('[MQTT-Broker-Interop-Plugin:MQTT]: Retained message added');
       metrics.onRetainedMessageAdded();
     });
 
     mqttEvents.on('retained-removed', (data) => {
-      logger.debug(`Retained message removed`);
+      server.logger.debug('[MQTT-Broker-Interop-Plugin:MQTT]: Retained message removed');
       metrics.onRetainedMessageRemoved();
     });
   }
 
-  logger.info('MQTT event monitoring setup complete');
+  server.logger.info('[MQTT-Broker-Interop-Plugin:MQTT]: MQTT event monitoring setup complete');
 }
 
 // ============================================================================
@@ -536,15 +576,16 @@ let sysIntervalConfig = 10; // Default to 10 seconds
  * @param {Object} logger - Logger instance
  * @param {number} sysInterval - Update interval in seconds
  */
-export function setupSysTopicsPublisher(server, logger, sysInterval) {
+export function setupSysTopicsPublisher(server, _logger, sysInterval) {
+  server.logger.info('[MQTT-Broker-Interop-Plugin:MQTT]: Setting up $SYS topics publisher');
   harperServer = server;
-  harperLogger = logger;
   sysIntervalConfig = sysInterval || 10;
+  server.logger.debug(`[MQTT-Broker-Interop-Plugin:MQTT]: $SYS interval configured: ${sysIntervalConfig}s`);
 
   // Initialize the publish table if needed
   initializePublishTable(server);
 
-  logger.info(`$SYS topics publisher configured with ${sysIntervalConfig}s interval`);
+  server.logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: $SYS topics publisher configured with ${sysIntervalConfig}s interval`);
 }
 
 /**
@@ -552,22 +593,28 @@ export function setupSysTopicsPublisher(server, logger, sysInterval) {
  */
 async function initializePublishTable(server) {
   try {
+    server.logger.debug('[MQTT-Broker-Interop-Plugin:MQTT]: Initializing MQTT publish table');
     // In HarperDB, we can publish to topics through the MQTT system directly
     // or use a table-based approach. For $SYS topics, we'll use direct publishing
     mqttPublishTable = server?.mqtt?.publish || null;
 
     if (!mqttPublishTable) {
-      harperLogger?.warn('MQTT publish interface not available');
+      server.logger.warn('[MQTT-Broker-Interop-Plugin:MQTT]: MQTT publish interface not available');
+    } else {
+      server.logger.debug('[MQTT-Broker-Interop-Plugin:MQTT]: MQTT publish interface initialized');
     }
   } catch (error) {
-    harperLogger?.error('Failed to initialize publish table:', error);
+    server.logger.error('[MQTT-Broker-Interop-Plugin:MQTT]: Failed to initialize publish table:', error);
   }
 }
 
 function startSysPublisher(intervalSeconds) {
-  if (publishInterval) return; // Already running
+  if (publishInterval) {
+    server.logger.debug('[MQTT-Broker-Interop-Plugin:MQTT]: $SYS publisher already running, skipping start');
+    return; // Already running
+  }
 
-  harperLogger?.info(`Starting $SYS topics publisher with ${intervalSeconds}s interval`);
+  server.logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: Starting $SYS topics publisher with ${intervalSeconds}s interval`);
 
   // Publish initial values immediately
   publishAllSysTopics();
@@ -576,17 +623,23 @@ function startSysPublisher(intervalSeconds) {
   publishInterval = setInterval(() => {
     publishAllSysTopics();
   }, intervalSeconds * 1000);
+
+  server.logger.debug(`[MQTT-Broker-Interop-Plugin:MQTT]: $SYS publisher interval timer established`);
 }
 
 function stopSysPublisher() {
   if (publishInterval) {
-    harperLogger?.info('Stopping $SYS topics publisher');
+    server.logger.info('[MQTT-Broker-Interop-Plugin:MQTT]: Stopping $SYS topics publisher');
     clearInterval(publishInterval);
     publishInterval = null;
+    server.logger.debug('[MQTT-Broker-Interop-Plugin:MQTT]: $SYS publisher stopped');
+  } else {
+    server.logger.debug('[MQTT-Broker-Interop-Plugin:MQTT]: $SYS publisher not running, nothing to stop');
   }
 }
 
 function publishAllSysTopics() {
+  server.logger.trace('[MQTT-Broker-Interop-Plugin:MQTT]: Publishing all $SYS topics');
   const dynamicTopics = [
     // Client metrics
     '$SYS/broker/clients/connected',
@@ -648,13 +701,17 @@ function publishAllSysTopics() {
   ];
 
   const sys = new SysTopics();
+  let publishCount = 0;
 
   dynamicTopics.forEach(topic => {
     const value = sys.get({ path: topic });
 
     // Publish to MQTT topic
     publishToMqtt(topic, String(value));
+    publishCount++;
   });
+
+  server.logger.trace(`[MQTT-Broker-Interop-Plugin:MQTT]: Published ${publishCount} $SYS topics`);
 }
 
 /**
@@ -672,7 +729,7 @@ function publishToMqtt(topic, message) {
         qos: 0,
         retain: false
       });
-      harperLogger?.debug(`Published to ${topic}: ${message}`);
+      server.logger.trace(`[MQTT-Broker-Interop-Plugin:MQTT]: Published to ${topic}: ${message}`);
     } else if (mqttPublishTable) {
       // Alternative: Use table-based publishing
       mqttPublishTable.create({
@@ -680,19 +737,22 @@ function publishToMqtt(topic, message) {
         payload: message,
         timestamp: new Date().toISOString()
       });
+      server.logger.trace(`[MQTT-Broker-Interop-Plugin:MQTT]: Published via table to ${topic}: ${message}`);
     } else {
-      harperLogger?.warn(`Cannot publish to ${topic} - no publish interface available`);
+      server.logger.warn(`[MQTT-Broker-Interop-Plugin:MQTT]: Cannot publish to ${topic} - no publish interface available`);
     }
   } catch (error) {
-    harperLogger?.error(`Failed to publish to ${topic}:`, error);
+    server.logger.error(`[MQTT-Broker-Interop-Plugin:MQTT]: Failed to publish to ${topic}:`, error);
   }
 }
 
 function onSysTopicSubscribe(clientId, topic) {
   sysSubscriberCount++;
+  server.logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: $SYS topic subscriber added - clientId: ${clientId}, topic: ${topic}, total subscribers: ${sysSubscriberCount}`);
 
   if (sysSubscriberCount === 1) {
     // First subscriber - start publishing
+    server.logger.info('[MQTT-Broker-Interop-Plugin:MQTT]: First $SYS subscriber, starting publisher');
     startSysPublisher(sysIntervalConfig);
   }
 
@@ -701,20 +761,24 @@ function onSysTopicSubscribe(clientId, topic) {
 
   // Send version if subscribed to it specifically or via wildcard
   if (topic === '$SYS/broker/version' || topic.includes('#')) {
+    server.logger.debug(`[MQTT-Broker-Interop-Plugin:MQTT]: Sending broker version to ${clientId}`);
     publishToMqtt('$SYS/broker/version', sys.getVersion());
   }
 
   // Send timestamp if subscribed to it specifically or via wildcard
   if (topic === '$SYS/broker/timestamp' || topic.includes('#')) {
+    server.logger.debug(`[MQTT-Broker-Interop-Plugin:MQTT]: Sending broker timestamp to ${clientId}`);
     publishToMqtt('$SYS/broker/timestamp', sys.get({ path: '$SYS/broker/timestamp' }));
   }
 }
 
 function onSysTopicUnsubscribe(clientId, topic) {
   sysSubscriberCount--;
+  server.logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: $SYS topic subscriber removed - clientId: ${clientId}, topic: ${topic}, total subscribers: ${sysSubscriberCount}`);
 
   if (sysSubscriberCount <= 0) {
     sysSubscriberCount = 0;
+    server.logger.info('[MQTT-Broker-Interop-Plugin:MQTT]: No more $SYS subscribers, stopping publisher');
     stopSysPublisher();
   }
 }

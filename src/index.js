@@ -9,27 +9,33 @@ export async function handleApplication(scope) {
 	const options = scope.options.getAll();
 	const server = scope.server;
 
+	server.logger.info('[MQTT-Broker-Interop-Plugin:Index]: Starting plugin initialization');
+	server.logger.debug(`[MQTT-Broker-Interop-Plugin:Index]: Scope options: ${JSON.stringify(Object.keys(options))}`);
+
 	// Load and normalize configuration
 	const fullConfig = loadConfig(options);
 
 	// Extract MQTT configuration
 	const sysInterval = fullConfig?.mqtt?.sys_interval || 10;
+	server.logger.info(`[MQTT-Broker-Interop-Plugin:Index]: Configuration loaded - sys_interval: ${sysInterval}s`);
 
-	logger.info('Initializing MQTT Broker Interop Plugin');
+	server.logger.info('[MQTT-Broker-Interop-Plugin:Index]: Initializing MQTT Broker Interop Plugin');
 
 	// Setup MQTT event monitoring (on worker threads)
 	if (server?.mqtt?.events) {
-		logger.info('Setting up MQTT event monitoring on worker thread');
+		server.logger.info('[MQTT-Broker-Interop-Plugin:Index]: MQTT events available, setting up event monitoring on worker thread');
 		setupMqttMonitoring(server, logger, sysInterval);
 	} else {
-		logger.debug('MQTT events not available on this thread');
+		server.logger.debug('[MQTT-Broker-Interop-Plugin:Index]: MQTT events not available on this thread');
 	}
 
 	// Setup $SYS topics publisher (on main thread)
 	if (typeof setupSysTopicsPublisher === 'function') {
-		logger.info('Setting up $SYS topics publisher');
+		server.logger.info('[MQTT-Broker-Interop-Plugin:Index]: Setting up $SYS topics publisher');
 		setupSysTopicsPublisher(server, logger, sysInterval);
+	} else {
+		server.logger.warn('[MQTT-Broker-Interop-Plugin:Index]: setupSysTopicsPublisher function not available');
 	}
 
-	logger.info('MQTT Broker Interop Plugin initialized successfully');
+	server.logger.info('[MQTT-Broker-Interop-Plugin:Index]: MQTT Broker Interop Plugin initialized successfully');
 }

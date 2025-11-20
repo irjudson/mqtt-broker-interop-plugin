@@ -20,6 +20,7 @@ const __dirname = dirname(__filename);
  */
 export function loadConfig(configPath = null) {
 	try {
+		server.logger.debug('[MQTT-Broker-Interop-Plugin:ConfigLoader]: Loading configuration');
 		let config;
 		let source;
 
@@ -27,19 +28,19 @@ export function loadConfig(configPath = null) {
 		if (configPath === null || configPath === undefined) {
 			// Default to config.yaml in project root
 			const path = join(__dirname, '..', 'config.yaml');
-			logger.debug(`[ConfigLoader.loadConfig] Loading config from default path: ${path}`);
+			server.logger.debug(`[MQTT-Broker-Interop-Plugin:ConfigLoader]: Loading config from default path: ${path}`);
 			const fileContent = readFileSync(path, 'utf8');
 			config = parse(fileContent);
 			source = path;
 		} else if (typeof configPath === 'string') {
 			// Path to config file
-			logger.debug(`[ConfigLoader.loadConfig] Loading config from: ${configPath}`);
+			server.logger.debug(`[MQTT-Broker-Interop-Plugin:ConfigLoader]: Loading config from: ${configPath}`);
 			const fileContent = readFileSync(configPath, 'utf8');
 			config = parse(fileContent);
 			source = configPath;
 		} else if (typeof configPath === 'object') {
 			// Config object passed directly (for testing)
-			logger.debug('[ConfigLoader.loadConfig] Using config object passed directly');
+			server.logger.debug('[MQTT-Broker-Interop-Plugin:ConfigLoader]: Using config object passed directly');
 			// Check if it's an options object with 'config' property
 			if (configPath.config) {
 				config = configPath.config;
@@ -48,20 +49,21 @@ export function loadConfig(configPath = null) {
 			}
 			source = 'object';
 		} else {
+			server.logger.error('[MQTT-Broker-Interop-Plugin:ConfigLoader]: Invalid configPath type');
 			throw new Error('configPath must be a string, object, or null');
 		}
 
 		if (!config) {
-			logger.error('[ConfigLoader.loadConfig] Failed to parse configuration');
+			server.logger.error('[MQTT-Broker-Interop-Plugin:ConfigLoader]: Failed to parse configuration');
 			throw new Error('Failed to parse configuration');
 		}
 
-		logger.info(`[ConfigLoader.loadConfig] Successfully loaded config from: ${source}`);
+		server.logger.info(`[MQTT-Broker-Interop-Plugin:ConfigLoader]: Successfully loaded config from: ${source}`);
 
 		// Normalize to multi-table format if needed
 		return normalizeConfig(config);
 	} catch (error) {
-		logger.error(`[ConfigLoader.loadConfig] Configuration loading failed: ${error.message}`);
+		server.logger.error(`[MQTT-Broker-Interop-Plugin:ConfigLoader]: Configuration loading failed: ${error.message}`);
 		throw new Error(`Failed to load configuration: ${error.message}`);
 	}
 }
