@@ -7,7 +7,6 @@ import { readFileSync } from 'fs';
 import { parse } from 'yaml';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { validateFullConfig as _validateFullConfig, validateAndNormalizeColumns } from './validators.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -61,7 +60,8 @@ export function loadConfig(configPath = null) {
 		server.logger.info(`[MQTT-Broker-Interop-Plugin:ConfigLoader]: Successfully loaded config from: ${source}`);
 
 		// Normalize to multi-table format if needed
-		return normalizeConfig(config);
+		// return normalizeConfig(config);
+		return(config);
 	} catch (error) {
 		server.logger.error(`[MQTT-Broker-Interop-Plugin:ConfigLoader]: Configuration loading failed: ${error.message}`);
 		throw new Error(`Failed to load configuration: ${error.message}`);
