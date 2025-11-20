@@ -3,10 +3,19 @@
  * Following TDD: Write tests first, watch them fail, then implement
  */
 
-import { describe, it, beforeEach } from 'node:test';
+// IMPORTANT: Setup logger FIRST before importing any modules that use it
+import './helpers/setup-logger.js';
+
+import { describe, it, beforeEach, after } from 'node:test';
 import assert from 'node:assert/strict';
 
 const mqttjs = '../src/mqtt.js';
+
+// Cleanup intervals after all tests to prevent hanging
+after(async () => {
+  const { metrics } = await import(mqttjs);
+  metrics.stopMetricsUpdates();
+});
 
 // Phase 1: MqttMetrics class tests
 
