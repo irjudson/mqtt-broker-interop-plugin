@@ -1,25 +1,133 @@
 // MQTT $SYS Topics Resource
-// Handles GET requests for $SYS/* topics
+// Handles GET requests for $SYS/* topics and wildcard subscriptions
 
-import { SysTopics, metrics } from './mqtt.js';
+import { SysTopics, metrics, topicRegistry } from './mqtt.js';
 
 // Create singleton instance of SysTopics
 const sysTopics = new SysTopics();
 
+// Define all available $SYS topics based on Mosquitto standard
+const ALL_SYS_TOPICS = [
+  // Static topics
+  '$SYS/broker/version',
+  '$SYS/broker/timestamp',
+
+  // Client metrics
+  '$SYS/broker/clients/connected',
+  '$SYS/broker/clients/disconnected',
+  '$SYS/broker/clients/maximum',
+  '$SYS/broker/clients/total',
+  '$SYS/broker/clients/expired',
+
+  // Message metrics
+  '$SYS/broker/messages/received',
+  '$SYS/broker/messages/sent',
+  '$SYS/broker/messages/inflight',
+  '$SYS/broker/messages/stored',
+
+  // Publish metrics
+  '$SYS/broker/publish/messages/received',
+  '$SYS/broker/publish/messages/sent',
+  '$SYS/broker/publish/messages/dropped',
+
+  // Byte metrics
+  '$SYS/broker/bytes/received',
+  '$SYS/broker/bytes/sent',
+
+  // Storage metrics
+  '$SYS/broker/store/messages/count',
+  '$SYS/broker/store/messages/bytes',
+
+  // Subscriptions & retained
+  '$SYS/broker/subscriptions/count',
+  '$SYS/broker/retained messages/count',
+
+  // System metrics
+  '$SYS/broker/heap/current',
+  '$SYS/broker/heap/maximum',
+  '$SYS/broker/uptime',
+
+  // Load averages (1min, 5min, 15min)
+  '$SYS/broker/load/connections/1min',
+  '$SYS/broker/load/connections/5min',
+  '$SYS/broker/load/connections/15min',
+  '$SYS/broker/load/messages/received/1min',
+  '$SYS/broker/load/messages/received/5min',
+  '$SYS/broker/load/messages/received/15min',
+  '$SYS/broker/load/messages/sent/1min',
+  '$SYS/broker/load/messages/sent/5min',
+  '$SYS/broker/load/messages/sent/15min',
+  '$SYS/broker/load/bytes/received/1min',
+  '$SYS/broker/load/bytes/received/5min',
+  '$SYS/broker/load/bytes/received/15min',
+  '$SYS/broker/load/bytes/sent/1min',
+  '$SYS/broker/load/bytes/sent/5min',
+  '$SYS/broker/load/bytes/sent/15min',
+  '$SYS/broker/load/publish/received/1min',
+  '$SYS/broker/load/publish/received/5min',
+  '$SYS/broker/load/publish/received/15min',
+  '$SYS/broker/load/publish/sent/1min',
+  '$SYS/broker/load/publish/sent/5min',
+  '$SYS/broker/load/publish/sent/15min'
+];
+
 /**
- * Resource class for handling $SYS topic requests
+ * Resource class for handling $SYS topic requests and wildcard subscriptions
  * Maps MQTT $SYS topic paths to current metric values
  */
 export class SysTopicsResource {
   /**
-   * GET handler for $SYS topics
+   * GET handler for $SYS topics and wildcard patterns
    * @param {Object} request - Request object with path property
-   * @returns {string|number|null} - Current metric value or null if unknown topic
+   * @returns {Object|Array|null} - Topic value(s) or null if unknown
    */
   get(request) {
     const topic = request.path || request.url;
 
-    // Handle $SYS topics
+    // Handle wildcard /#  - all non-$SYS topics
+    if (topic === '/#' || topic === '#') {
+      const allTopics = Array.from(topicRegistry);
+
+      return {
+        pattern: '/#',
+        count: allTopics.length,
+        topics: allTopics.map(t => ({
+          topic: t,
+          timestamp: new Date().toISOString()
+        }))
+      };
+    }
+
+    // Handle wildcard $SYS/# - all $SYS topics
+    if (topic === '$SYS/#' || topic === '$SYS/*') {
+      return {
+        pattern: '$SYS/#',
+        count: ALL_SYS_TOPICS.length,
+        topics: ALL_SYS_TOPICS.map(t => ({
+          topic: t,
+          value: sysTopics.get({ path: t }),
+          timestamp: new Date().toISOString()
+        })).filter(item => item.value !== null)
+      };
+    }
+
+    // Handle partial $SYS wildcards like $SYS/broker/clients/#
+    if (topic && topic.startsWith('$SYS/') && topic.includes('#')) {
+      const prefix = topic.replace('/#', '/').replace('#', '');
+      const matchingTopics = ALL_SYS_TOPICS.filter(t => t.startsWith(prefix));
+
+      return {
+        pattern: topic,
+        count: matchingTopics.length,
+        topics: matchingTopics.map(t => ({
+          topic: t,
+          value: sysTopics.get({ path: t }),
+          timestamp: new Date().toISOString()
+        })).filter(item => item.value !== null)
+      };
+    }
+
+    // Handle individual $SYS topic
     if (topic && topic.startsWith('$SYS/')) {
       const value = sysTopics.get({ path: topic });
 
@@ -37,74 +145,52 @@ export class SysTopicsResource {
   }
 
   /**
-   * Handle wildcard subscriptions like $SYS/#
+   * Alias for get() to support search operations
    * @param {Object} request - Request object
-   * @returns {Array} - Array of all matching topics and values
+   * @returns {Object|Array|null} - Topic value(s) or null
    */
   search(request) {
-    const pattern = request.path || request.url;
-
-    if (pattern === '$SYS/#' || pattern === '$SYS/*') {
-      // Return all $SYS topics
-      const allTopics = [
-        '$SYS/broker/version',
-        '$SYS/broker/timestamp',
-        '$SYS/broker/clients/connected',
-        '$SYS/broker/clients/disconnected',
-        '$SYS/broker/clients/maximum',
-        '$SYS/broker/clients/total',
-        '$SYS/broker/messages/received',
-        '$SYS/broker/messages/sent',
-        '$SYS/broker/publish/messages/received',
-        '$SYS/broker/publish/messages/sent',
-        '$SYS/broker/bytes/received',
-        '$SYS/broker/bytes/sent',
-        '$SYS/broker/subscriptions/count',
-        '$SYS/broker/retained messages/count'
-      ];
-
-      return allTopics.map(topic => ({
-        topic: topic,
-        value: sysTopics.get({ path: topic }),
-        timestamp: new Date().toISOString()
-      }));
-    }
-
-    // Handle partial wildcards like $SYS/broker/clients/#
-    if (pattern && pattern.includes('#')) {
-      const prefix = pattern.replace('/#', '/').replace('#', '');
-      const allTopics = [
-        '$SYS/broker/version',
-        '$SYS/broker/timestamp',
-        '$SYS/broker/clients/connected',
-        '$SYS/broker/clients/disconnected',
-        '$SYS/broker/clients/maximum',
-        '$SYS/broker/clients/total',
-        '$SYS/broker/messages/received',
-        '$SYS/broker/messages/sent',
-        '$SYS/broker/publish/messages/received',
-        '$SYS/broker/publish/messages/sent',
-        '$SYS/broker/bytes/received',
-        '$SYS/broker/bytes/sent',
-        '$SYS/broker/subscriptions/count',
-        '$SYS/broker/retained messages/count'
-      ];
-
-      const matchingTopics = allTopics.filter(t => t.startsWith(prefix));
-
-      return matchingTopics.map(topic => ({
-        topic: topic,
-        value: sysTopics.get({ path: topic }),
-        timestamp: new Date().toISOString()
-      }));
-    }
-
-    return [];
+    return this.get(request);
   }
 }
 
 // Export the resource for the $SYS path
 export const SYS = SysTopicsResource;
+
+/**
+ * Resource class for handling wildcard /# subscriptions
+ * Returns all non-$SYS topics
+ */
+export class WildcardTopicsResource {
+  /**
+   * GET handler for /# wildcard pattern
+   * @param {Object} request - Request object with path property
+   * @returns {Object} - All non-$SYS topics
+   */
+  get(request) {
+    const topic = request.path || request.url;
+
+    // Handle /# wildcard - return all non-$SYS topics
+    if (topic === '/#' || topic === '#' || topic === '/') {
+      // Filter out any $SYS topics that might be in the registry
+      const allTopics = Array.from(topicRegistry).filter(t => !t.startsWith('$SYS/'));
+
+      return {
+        pattern: '/#',
+        count: allTopics.length,
+        topics: allTopics.map(t => ({
+          topic: t,
+          timestamp: new Date().toISOString()
+        }))
+      };
+    }
+
+    return null;
+  }
+}
+
+// Export the wildcard resource
+export const Wildcard = WildcardTopicsResource;
 
 // Export a helper to get current metrics directly
 export function getMetrics() {
@@ -114,6 +200,9 @@ export function getMetrics() {
     messages: { ...metrics.messages },
     bytes: { ...metrics.bytes },
     subscriptions: { ...metrics.subscriptions },
-    retained: { ...metrics.retained }
+    retained: { ...metrics.retained },
+    store: { ...metrics.store },
+    heap: { ...metrics.heap },
+    load: JSON.parse(JSON.stringify(metrics.load))
   };
 }

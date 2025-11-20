@@ -3,6 +3,9 @@
  * Provides standard MQTT broker statistics via $SYS topics
  */
 
+// Global topic registry to track all published topics
+export const topicRegistry = new Set();
+
 /**
  * MqttMetrics - Tracks MQTT broker statistics
  * This is the primary extension point for adding new metrics
@@ -15,19 +18,28 @@ export class MqttMetrics {
       connected: 0,
       disconnected: 0,  // persistent sessions
       maximum: 0,
-      total: 0
+      total: 0,
+      expired: 0  // expired persistent sessions
     };
 
     this.messages = {
       received: 0,
       sent: 0,
       publishReceived: 0,
-      publishSent: 0
+      publishSent: 0,
+      publishDropped: 0,  // dropped messages
+      inflight: 0,  // QoS > 0 messages awaiting acknowledgment
+      stored: 0  // messages in storage
     };
 
     this.bytes = {
       received: 0,
       sent: 0
+    };
+
+    this.store = {
+      messageCount: 0,
+      messageBytes: 0
     };
 
     this.subscriptions = {
@@ -38,10 +50,37 @@ export class MqttMetrics {
       count: 0
     };
 
-    // Extension point for future metrics (option C):
-    // this.load = { oneMin: 0, fiveMin: 0, fifteenMin: 0 };
-    // this.system = { uptime: 0, heapCurrent: 0, heapMaximum: 0 };
-    // this.perClient = new Map(); // client-id → stats
+    // System metrics
+    this.heap = {
+      current: 0,
+      maximum: 0
+    };
+
+    // Load averages
+    this.load = {
+      connections: { oneMin: 0, fiveMin: 0, fifteenMin: 0 },
+      messagesReceived: { oneMin: 0, fiveMin: 0, fifteenMin: 0 },
+      messagesSent: { oneMin: 0, fiveMin: 0, fifteenMin: 0 },
+      bytesReceived: { oneMin: 0, fiveMin: 0, fifteenMin: 0 },
+      bytesSent: { oneMin: 0, fiveMin: 0, fifteenMin: 0 },
+      publishReceived: { oneMin: 0, fiveMin: 0, fifteenMin: 0 },
+      publishSent: { oneMin: 0, fiveMin: 0, fifteenMin: 0 }
+    };
+
+    // Track samples for load average calculation
+    this._loadSamples = {
+      connections: [],
+      messagesReceived: [],
+      messagesSent: [],
+      bytesReceived: [],
+      bytesSent: [],
+      publishReceived: [],
+      publishSent: []
+    };
+
+    // Update system metrics periodically
+    this._updateSystemMetrics();
+    setInterval(() => this._updateSystemMetrics(), 60000); // Update every minute
   }
 
   onConnect(clientId, persistent) {
@@ -89,6 +128,86 @@ export class MqttMetrics {
 
   onRetainedMessageRemoved() {
     this.retained.count--;
+  }
+
+  onMessageDropped() {
+    this.messages.publishDropped++;
+  }
+
+  onMessageInflight(delta) {
+    this.messages.inflight += delta;
+  }
+
+  onMessageStored(delta) {
+    this.messages.stored += delta;
+  }
+
+  onExpiredClient() {
+    this.clients.expired++;
+  }
+
+  _updateSystemMetrics() {
+    // Update heap metrics
+    if (process.memoryUsage) {
+      const memUsage = process.memoryUsage();
+      this.heap.current = memUsage.heapUsed;
+      this.heap.maximum = Math.max(this.heap.maximum, memUsage.heapUsed);
+    }
+
+    // Calculate load averages
+    const now = Date.now();
+
+    // Add current sample
+    this._loadSamples.connections.push({ time: now, value: this.clients.connected });
+    this._loadSamples.messagesReceived.push({ time: now, value: this.messages.received });
+    this._loadSamples.messagesSent.push({ time: now, value: this.messages.sent });
+    this._loadSamples.bytesReceived.push({ time: now, value: this.bytes.received });
+    this._loadSamples.bytesSent.push({ time: now, value: this.bytes.sent });
+    this._loadSamples.publishReceived.push({ time: now, value: this.messages.publishReceived });
+    this._loadSamples.publishSent.push({ time: now, value: this.messages.publishSent });
+
+    // Clean old samples (keep 15 minutes worth)
+    const cutoff = now - 15 * 60 * 1000;
+    Object.keys(this._loadSamples).forEach(key => {
+      this._loadSamples[key] = this._loadSamples[key].filter(s => s.time > cutoff);
+    });
+
+    // Calculate averages
+    this._calculateLoadAverages();
+  }
+
+  _calculateLoadAverages() {
+    const now = Date.now();
+    const oneMinAgo = now - 60 * 1000;
+    const fiveMinAgo = now - 5 * 60 * 1000;
+    const fifteenMinAgo = now - 15 * 60 * 1000;
+
+    Object.keys(this._loadSamples).forEach(metric => {
+      const samples = this._loadSamples[metric];
+
+      // Get samples in each time window
+      const oneMinSamples = samples.filter(s => s.time > oneMinAgo);
+      const fiveMinSamples = samples.filter(s => s.time > fiveMinAgo);
+      const fifteenMinSamples = samples.filter(s => s.time > fifteenMinAgo);
+
+      // Calculate averages
+      const metricKey = metric.replace('messages', 'messages').replace('bytes', 'bytes');
+
+      if (oneMinSamples.length > 0) {
+        const delta = oneMinSamples[oneMinSamples.length - 1].value - oneMinSamples[0].value;
+        this.load[metric].oneMin = delta / (oneMinSamples.length > 1 ? 1 : 1);
+      }
+
+      if (fiveMinSamples.length > 0) {
+        const delta = fiveMinSamples[fiveMinSamples.length - 1].value - fiveMinSamples[0].value;
+        this.load[metric].fiveMin = delta / (fiveMinSamples.length > 1 ? 5 : 1);
+      }
+
+      if (fifteenMinSamples.length > 0) {
+        const delta = fifteenMinSamples[fifteenMinSamples.length - 1].value - fifteenMinSamples[0].value;
+        this.load[metric].fifteenMin = delta / (fifteenMinSamples.length > 1 ? 15 : 1);
+      }
+    });
   }
 }
 
@@ -172,11 +291,118 @@ export class SysTopics {
       return this.metrics.retained.count;
     }
 
-    // Extension point for future topics:
-    // if (topic === '$SYS/broker/uptime') {
-    //   const uptime = Date.now() - this.metrics.startTime.getTime();
-    //   return Math.floor(uptime / 1000); // seconds
-    // }
+    // Additional client metrics
+    if (topic === '$SYS/broker/clients/expired') {
+      return this.metrics.clients.expired;
+    }
+
+    // Additional message metrics
+    if (topic === '$SYS/broker/messages/inflight') {
+      return this.metrics.messages.inflight;
+    }
+    if (topic === '$SYS/broker/messages/stored') {
+      return this.metrics.messages.stored;
+    }
+    if (topic === '$SYS/broker/publish/messages/dropped') {
+      return this.metrics.messages.publishDropped;
+    }
+
+    // Store metrics
+    if (topic === '$SYS/broker/store/messages/count') {
+      return this.metrics.store.messageCount;
+    }
+    if (topic === '$SYS/broker/store/messages/bytes') {
+      return this.metrics.store.messageBytes;
+    }
+
+    // System metrics
+    if (topic === '$SYS/broker/heap/current') {
+      return this.metrics.heap.current;
+    }
+    if (topic === '$SYS/broker/heap/maximum') {
+      return this.metrics.heap.maximum;
+    }
+    if (topic === '$SYS/broker/uptime') {
+      const uptime = Date.now() - this.metrics.startTime.getTime();
+      return Math.floor(uptime / 1000); // seconds
+    }
+
+    // Load average metrics - Connections
+    if (topic === '$SYS/broker/load/connections/1min') {
+      return Math.round(this.metrics.load.connections.oneMin);
+    }
+    if (topic === '$SYS/broker/load/connections/5min') {
+      return Math.round(this.metrics.load.connections.fiveMin);
+    }
+    if (topic === '$SYS/broker/load/connections/15min') {
+      return Math.round(this.metrics.load.connections.fifteenMin);
+    }
+
+    // Load average metrics - Messages Received
+    if (topic === '$SYS/broker/load/messages/received/1min') {
+      return Math.round(this.metrics.load.messagesReceived.oneMin);
+    }
+    if (topic === '$SYS/broker/load/messages/received/5min') {
+      return Math.round(this.metrics.load.messagesReceived.fiveMin);
+    }
+    if (topic === '$SYS/broker/load/messages/received/15min') {
+      return Math.round(this.metrics.load.messagesReceived.fifteenMin);
+    }
+
+    // Load average metrics - Messages Sent
+    if (topic === '$SYS/broker/load/messages/sent/1min') {
+      return Math.round(this.metrics.load.messagesSent.oneMin);
+    }
+    if (topic === '$SYS/broker/load/messages/sent/5min') {
+      return Math.round(this.metrics.load.messagesSent.fiveMin);
+    }
+    if (topic === '$SYS/broker/load/messages/sent/15min') {
+      return Math.round(this.metrics.load.messagesSent.fifteenMin);
+    }
+
+    // Load average metrics - Bytes Received
+    if (topic === '$SYS/broker/load/bytes/received/1min') {
+      return Math.round(this.metrics.load.bytesReceived.oneMin);
+    }
+    if (topic === '$SYS/broker/load/bytes/received/5min') {
+      return Math.round(this.metrics.load.bytesReceived.fiveMin);
+    }
+    if (topic === '$SYS/broker/load/bytes/received/15min') {
+      return Math.round(this.metrics.load.bytesReceived.fifteenMin);
+    }
+
+    // Load average metrics - Bytes Sent
+    if (topic === '$SYS/broker/load/bytes/sent/1min') {
+      return Math.round(this.metrics.load.bytesSent.oneMin);
+    }
+    if (topic === '$SYS/broker/load/bytes/sent/5min') {
+      return Math.round(this.metrics.load.bytesSent.fiveMin);
+    }
+    if (topic === '$SYS/broker/load/bytes/sent/15min') {
+      return Math.round(this.metrics.load.bytesSent.fifteenMin);
+    }
+
+    // Load average metrics - Publish Received
+    if (topic === '$SYS/broker/load/publish/received/1min') {
+      return Math.round(this.metrics.load.publishReceived.oneMin);
+    }
+    if (topic === '$SYS/broker/load/publish/received/5min') {
+      return Math.round(this.metrics.load.publishReceived.fiveMin);
+    }
+    if (topic === '$SYS/broker/load/publish/received/15min') {
+      return Math.round(this.metrics.load.publishReceived.fifteenMin);
+    }
+
+    // Load average metrics - Publish Sent
+    if (topic === '$SYS/broker/load/publish/sent/1min') {
+      return Math.round(this.metrics.load.publishSent.oneMin);
+    }
+    if (topic === '$SYS/broker/load/publish/sent/5min') {
+      return Math.round(this.metrics.load.publishSent.fiveMin);
+    }
+    if (topic === '$SYS/broker/load/publish/sent/15min') {
+      return Math.round(this.metrics.load.publishSent.fifteenMin);
+    }
 
     // Unknown topic
     return null;
@@ -241,6 +467,11 @@ export function setupMqttMonitoring(server, logger, sysInterval) {
     const byteCount = payload ? Buffer.byteLength(payload) : 0;
     logger.debug(`MQTT publish received on topic ${topic}: ${byteCount} bytes`);
     metrics.onPublishReceived({ topic, payload }, byteCount);
+
+    // Track topic in registry (exclude $SYS topics from general registry)
+    if (topic && !topic.startsWith('$SYS/')) {
+      topicRegistry.add(topic);
+    }
   });
 
   // Monitor subscription events
@@ -357,18 +588,63 @@ function stopSysPublisher() {
 
 function publishAllSysTopics() {
   const dynamicTopics = [
+    // Client metrics
     '$SYS/broker/clients/connected',
     '$SYS/broker/clients/disconnected',
     '$SYS/broker/clients/maximum',
     '$SYS/broker/clients/total',
+    '$SYS/broker/clients/expired',
+
+    // Message metrics
     '$SYS/broker/messages/received',
     '$SYS/broker/messages/sent',
+    '$SYS/broker/messages/inflight',
+    '$SYS/broker/messages/stored',
+
+    // Publish metrics
     '$SYS/broker/publish/messages/received',
     '$SYS/broker/publish/messages/sent',
+    '$SYS/broker/publish/messages/dropped',
+
+    // Byte metrics
     '$SYS/broker/bytes/received',
     '$SYS/broker/bytes/sent',
+
+    // Store metrics
+    '$SYS/broker/store/messages/count',
+    '$SYS/broker/store/messages/bytes',
+
+    // Subscription and retained metrics
     '$SYS/broker/subscriptions/count',
-    '$SYS/broker/retained messages/count'
+    '$SYS/broker/retained messages/count',
+
+    // System metrics
+    '$SYS/broker/heap/current',
+    '$SYS/broker/heap/maximum',
+    '$SYS/broker/uptime',
+
+    // Load averages - all metrics
+    '$SYS/broker/load/connections/1min',
+    '$SYS/broker/load/connections/5min',
+    '$SYS/broker/load/connections/15min',
+    '$SYS/broker/load/messages/received/1min',
+    '$SYS/broker/load/messages/received/5min',
+    '$SYS/broker/load/messages/received/15min',
+    '$SYS/broker/load/messages/sent/1min',
+    '$SYS/broker/load/messages/sent/5min',
+    '$SYS/broker/load/messages/sent/15min',
+    '$SYS/broker/load/bytes/received/1min',
+    '$SYS/broker/load/bytes/received/5min',
+    '$SYS/broker/load/bytes/received/15min',
+    '$SYS/broker/load/bytes/sent/1min',
+    '$SYS/broker/load/bytes/sent/5min',
+    '$SYS/broker/load/bytes/sent/15min',
+    '$SYS/broker/load/publish/received/1min',
+    '$SYS/broker/load/publish/received/5min',
+    '$SYS/broker/load/publish/received/15min',
+    '$SYS/broker/load/publish/sent/1min',
+    '$SYS/broker/load/publish/sent/5min',
+    '$SYS/broker/load/publish/sent/15min'
   ];
 
   const sys = new SysTopics();
