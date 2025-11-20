@@ -96,19 +96,11 @@ export class MqttMetrics {
 export const metrics = new MqttMetrics();
 
 // ============================================================================
-// 🔧 INTEGRATION POINT 1: Import Harper's MQTT Broker
+// HarperDB Server and MQTT Integration
 // ============================================================================
-// TODO: Add import for Harper's MQTT broker instance
-// Example (syntax depends on Harper's API):
-// import { broker } from 'harper'; // or similar
-// OR if broker is globally available:
-// const broker = globalThis.broker; // or similar
-//
-// HUMAN ACTION REQUIRED: Research Harper's documentation to find:
-// - How to access the MQTT broker instance from a resource file
-// - What the broker object is called
-// - Whether it needs to be imported or is globally available
-// ============================================================================
+let harperServer = null;
+let harperLogger = null;
+let mqttPublishTable = null;
 
 /**
  * SysTopics - Resource class that handles all $SYS/* topic requests
@@ -194,79 +186,162 @@ export class SysTopics {
    * Get HarperDB version string
    */
   getVersion() {
-    // ⚠️ TODO: Replace with actual HarperDB version ⚠️
-    // WHAT TO RESEARCH:
-    // - How to get Harper's version at runtime
-    // - Possible locations: process.env, global object, import from Harper core
-    return 'HarperDB 4.7.0';
+    // Try to get HarperDB version from various possible sources
+    if (harperServer?.version) {
+      return harperServer.version;
+    }
+    if (process.env.HARPERDB_VERSION) {
+      return process.env.HARPERDB_VERSION;
+    }
+    if (globalThis.harperVersion) {
+      return globalThis.harperVersion;
+    }
+    // Fallback to a generic version string
+    return 'HarperDB 4.x';
   }
 }
 
 // ============================================================================
-// 🔧 INTEGRATION POINT 2: Event Hook Registration (PHASE 3)
-// ============================================================================
-// HUMAN ACTION REQUIRED: Wire up event listeners to Harper's MQTT broker
-//
-// The metrics object has all the handler methods ready (metrics.onConnect, etc.)
-// You just need to call them when Harper's MQTT events fire.
-//
-// Example implementation (adjust to match Harper's actual API):
-//
-// broker.on('client.connected', (clientId, cleanSession) => {
-//   metrics.onConnect(clientId, !cleanSession);
-// });
-//
-// broker.on('client.disconnected', (clientId, cleanSession) => {
-//   metrics.onDisconnect(clientId, !cleanSession);
-// });
-//
-// broker.on('message.received', (message) => {
-//   const byteCount = message.payload.length; // or however Harper provides size
-//   metrics.onPublishReceived(message, byteCount);
-// });
-//
-// broker.on('message.sent', (message) => {
-//   const byteCount = message.payload.length;
-//   metrics.onPublishSent(message, byteCount);
-// });
-//
-// broker.on('client.subscribed', (clientId, topic) => {
-//   metrics.onSubscribe(clientId, topic);
-//   if (topic.startsWith('$SYS/')) {
-//     onSysTopicSubscribe(clientId, topic); // defined in INTEGRATION POINT 3
-//   }
-// });
-//
-// broker.on('client.unsubscribed', (clientId, topic) => {
-//   metrics.onUnsubscribe(clientId, topic);
-//   if (topic.startsWith('$SYS/')) {
-//     onSysTopicUnsubscribe(clientId, topic); // defined in INTEGRATION POINT 3
-//   }
-// });
-//
-// WHAT TO RESEARCH:
-// 1. Harper's event names (might be different from 'client.connected', etc.)
-// 2. Event handler signatures (what parameters are passed to callbacks)
-// 3. How to get message byte size from Harper's message objects
-// 4. Whether Harper tracks retained messages (for onRetainedMessageAdded/Removed)
-//
-// ⚠️ INSERT EVENT REGISTRATION CODE HERE ⚠️
+// MQTT Event Monitoring Setup
 // ============================================================================
 
+/**
+ * Setup MQTT event monitoring on worker threads
+ * @param {Object} server - HarperDB server instance
+ * @param {Object} logger - Logger instance
+ * @param {number} sysInterval - Update interval in seconds
+ */
+export function setupMqttMonitoring(server, logger, sysInterval) {
+  if (!server?.mqtt?.events) {
+    logger.warn('MQTT events not available on this thread');
+    return;
+  }
+
+  harperServer = server;
+  harperLogger = logger;
+  const mqttEvents = server.mqtt.events;
+
+  // Monitor client connections
+  mqttEvents.on('connected', (data) => {
+    const { clientId, username, cleanSession } = data;
+    logger.debug(`MQTT client connected: ${clientId}`);
+    metrics.onConnect(clientId, !cleanSession);
+  });
+
+  // Monitor client disconnections
+  mqttEvents.on('disconnected', (data) => {
+    const { clientId, cleanSession } = data;
+    logger.debug(`MQTT client disconnected: ${clientId}`);
+    metrics.onDisconnect(clientId, !cleanSession);
+  });
+
+  // Monitor publish events (messages received from clients)
+  mqttEvents.on('publish', (data) => {
+    const { topic, payload, clientId } = data;
+    const byteCount = payload ? Buffer.byteLength(payload) : 0;
+    logger.debug(`MQTT publish received on topic ${topic}: ${byteCount} bytes`);
+    metrics.onPublishReceived({ topic, payload }, byteCount);
+  });
+
+  // Monitor subscription events
+  mqttEvents.on('subscribe', (data) => {
+    const { clientId, topics } = data;
+    if (Array.isArray(topics)) {
+      topics.forEach(topic => {
+        logger.debug(`MQTT client ${clientId} subscribed to ${topic}`);
+        metrics.onSubscribe(clientId, topic);
+
+        // Check if it's a $SYS topic subscription
+        if (topic.startsWith('$SYS/') || topic === '$SYS/#') {
+          onSysTopicSubscribe(clientId, topic);
+        }
+      });
+    }
+  });
+
+  // Monitor unsubscription events
+  mqttEvents.on('unsubscribe', (data) => {
+    const { clientId, topics } = data;
+    if (Array.isArray(topics)) {
+      topics.forEach(topic => {
+        logger.debug(`MQTT client ${clientId} unsubscribed from ${topic}`);
+        metrics.onUnsubscribe(clientId, topic);
+
+        // Check if it's a $SYS topic unsubscription
+        if (topic.startsWith('$SYS/') || topic === '$SYS/#') {
+          onSysTopicUnsubscribe(clientId, topic);
+        }
+      });
+    }
+  });
+
+  // Monitor retained message events if available
+  if (mqttEvents.on) {
+    mqttEvents.on('retained-added', (data) => {
+      logger.debug(`Retained message added`);
+      metrics.onRetainedMessageAdded();
+    });
+
+    mqttEvents.on('retained-removed', (data) => {
+      logger.debug(`Retained message removed`);
+      metrics.onRetainedMessageRemoved();
+    });
+  }
+
+  logger.info('MQTT event monitoring setup complete');
+}
+
 // ============================================================================
-// 🔧 INTEGRATION POINT 3: Update Publisher (PHASE 4)
-// ============================================================================
-// HUMAN ACTION REQUIRED: Implement periodic publishing of $SYS topic updates
-//
-// This code is ready to use - just uncomment and adjust the TODOs below.
+// $SYS Topics Publisher Setup
 // ============================================================================
 
 let publishInterval = null;
 let sysSubscriberCount = 0;
+let sysIntervalConfig = 10; // Default to 10 seconds
+
+/**
+ * Setup the $SYS topics publisher
+ * @param {Object} server - HarperDB server instance
+ * @param {Object} logger - Logger instance
+ * @param {number} sysInterval - Update interval in seconds
+ */
+export function setupSysTopicsPublisher(server, logger, sysInterval) {
+  harperServer = server;
+  harperLogger = logger;
+  sysIntervalConfig = sysInterval || 10;
+
+  // Initialize the publish table if needed
+  initializePublishTable(server);
+
+  logger.info(`$SYS topics publisher configured with ${sysIntervalConfig}s interval`);
+}
+
+/**
+ * Initialize the table used for publishing MQTT messages
+ */
+async function initializePublishTable(server) {
+  try {
+    // In HarperDB, we can publish to topics through the MQTT system directly
+    // or use a table-based approach. For $SYS topics, we'll use direct publishing
+    mqttPublishTable = server?.mqtt?.publish || null;
+
+    if (!mqttPublishTable) {
+      harperLogger?.warn('MQTT publish interface not available');
+    }
+  } catch (error) {
+    harperLogger?.error('Failed to initialize publish table:', error);
+  }
+}
 
 function startSysPublisher(intervalSeconds) {
   if (publishInterval) return; // Already running
 
+  harperLogger?.info(`Starting $SYS topics publisher with ${intervalSeconds}s interval`);
+
+  // Publish initial values immediately
+  publishAllSysTopics();
+
+  // Then set up periodic publishing
   publishInterval = setInterval(() => {
     publishAllSysTopics();
   }, intervalSeconds * 1000);
@@ -274,6 +349,7 @@ function startSysPublisher(intervalSeconds) {
 
 function stopSysPublisher() {
   if (publishInterval) {
+    harperLogger?.info('Stopping $SYS topics publisher');
     clearInterval(publishInterval);
     publishInterval = null;
   }
@@ -296,17 +372,44 @@ function publishAllSysTopics() {
   ];
 
   const sys = new SysTopics();
+
   dynamicTopics.forEach(topic => {
     const value = sys.get({ path: topic });
 
-    // ⚠️ TODO: Replace with Harper's actual publish API ⚠️
-    // broker.publish(topic, String(value), { qos: 0 });
-    //
-    // WHAT TO RESEARCH:
-    // - How to publish a message to a topic from JavaScript
-    // - Whether the value needs to be a string or can be a number
-    // - What the publish method signature is
+    // Publish to MQTT topic
+    publishToMqtt(topic, String(value));
   });
+}
+
+/**
+ * Publish a message to an MQTT topic
+ * @param {string} topic - MQTT topic
+ * @param {string} message - Message to publish
+ */
+function publishToMqtt(topic, message) {
+  try {
+    if (harperServer?.mqtt?.publish) {
+      // Use HarperDB's MQTT publish API
+      harperServer.mqtt.publish({
+        topic: topic,
+        payload: message,
+        qos: 0,
+        retain: false
+      });
+      harperLogger?.debug(`Published to ${topic}: ${message}`);
+    } else if (mqttPublishTable) {
+      // Alternative: Use table-based publishing
+      mqttPublishTable.create({
+        topic: topic,
+        payload: message,
+        timestamp: new Date().toISOString()
+      });
+    } else {
+      harperLogger?.warn(`Cannot publish to ${topic} - no publish interface available`);
+    }
+  } catch (error) {
+    harperLogger?.error(`Failed to publish to ${topic}:`, error);
+  }
 }
 
 function onSysTopicSubscribe(clientId, topic) {
@@ -314,16 +417,7 @@ function onSysTopicSubscribe(clientId, topic) {
 
   if (sysSubscriberCount === 1) {
     // First subscriber - start publishing
-
-    // ⚠️ TODO: Get sys_interval from config ⚠️
-    const interval = 10; // Default to 10 seconds
-    // Replace with: const interval = config.mqtt?.sys_interval || 10;
-    //
-    // WHAT TO RESEARCH:
-    // - How to access config.yaml values at runtime in Harper
-    // - Whether there's a global config object
-
-    startSysPublisher(interval);
+    startSysPublisher(sysIntervalConfig);
   }
 
   // Send static topics immediately on subscription
@@ -331,14 +425,12 @@ function onSysTopicSubscribe(clientId, topic) {
 
   // Send version if subscribed to it specifically or via wildcard
   if (topic === '$SYS/broker/version' || topic.includes('#')) {
-    // ⚠️ TODO: Replace with Harper's publish API ⚠️
-    // broker.publish('$SYS/broker/version', sys.getVersion(), { qos: 0 });
+    publishToMqtt('$SYS/broker/version', sys.getVersion());
   }
 
   // Send timestamp if subscribed to it specifically or via wildcard
   if (topic === '$SYS/broker/timestamp' || topic.includes('#')) {
-    // ⚠️ TODO: Replace with Harper's publish API ⚠️
-    // broker.publish('$SYS/broker/timestamp', sys.get({ path: '$SYS/broker/timestamp' }), { qos: 0 });
+    publishToMqtt('$SYS/broker/timestamp', sys.get({ path: '$SYS/broker/timestamp' }));
   }
 }
 

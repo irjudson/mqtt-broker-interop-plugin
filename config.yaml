@@ -11,11 +11,8 @@ graphqlSchema:
 jsResource:
   files: 'src/resources.js'
 
-# Operations API Configuration (for dynamic table creation)
-# When configured, Harper tables are created automatically based on BigQuery schema
-# No schema.graphql definitions needed for data tables
-operations:
-  host: localhost
-  port: 9925
-  username: admin
-  password: password # Change this to your Harper password
+# MQTT Configuration
+mqtt:
+  # Interval in seconds for publishing $SYS topic updates
+  sys_interval: 10
+

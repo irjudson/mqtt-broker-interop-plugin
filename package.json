@@ -29,8 +29,9 @@
 		"README.md"
 	],
 	"scripts": {
-		"test": "node --test test/config-loader.test.js test/sync-engine.test.js test/bigquery-client.test.js test/generator.test.js test/multi-table-orchestrator.test.js",
-		"test:coverage": "node --test --experimental-test-coverage test/config-loader.test.js test/sync-engine.test.js test/bigquery-client.test.js test/generator.test.js test/multi-table-orchestrator.test.js",
+		"test": "node --test test/mqtt-sys.test.js",
+		"test:coverage": "node --test --experimental-test-coverage test/mqtt-sys.test.js",
+		"test:integration": "node test/integration.test.js",
 		"test:config": "node examples/test-bigquery-config.js",
 		"lint": "eslint .",
 		"format": "prettier .",

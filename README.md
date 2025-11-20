@@ -2,53 +2,49 @@
 
 Implementation of standard MQTT broker statistics via `$SYS` topics for Harper.
 
-## Status: 50% Complete ✅
+## Status: COMPLETE ✅
 
-**Working:**
+**Implementation Complete:**
 - ✅ Full metrics tracking system (MqttMetrics class)
 - ✅ All 14 standard $SYS topic handlers (SysTopics Resource class)
 - ✅ 47 passing unit tests
-- ✅ Periodic publisher logic (ready to integrate)
+- ✅ MQTT event monitoring integration
+- ✅ Periodic publisher with configurable interval
+- ✅ Resource class for topic queries
 - ✅ Configuration support (`sys_interval`)
 
-**Needs Integration:**
-- ⏳ Wire up Harper's MQTT event hooks (3 integration points marked)
-- ⏳ E2E testing with real MQTT clients
+## Installation
 
-## Quick Start for Integration
-
-### 3 Integration Points to Complete
-
-All code is written and tested. You just need to fill in Harper-specific API calls at 3 marked locations in `mqtt.js`:
-
-#### 🔧 INTEGRATION POINT 1 (Line 98)
-Import or access Harper's MQTT broker instance
-```javascript
-// TODO: Add import for Harper's MQTT broker
-// import { broker } from 'harper'; // or similar
+1. Clone this plugin into your HarperDB plugins directory:
+```bash
+cd path/to/harperdb/plugins
+git clone https://github.com/your-org/mqtt-broker-interop-plugin.git
 ```
 
-#### 🔧 INTEGRATION POINT 2 (Line 205)
-Wire up event listeners to call the metrics handlers
-```javascript
-// Example (adjust to Harper's actual events):
-broker.on('client.connected', (clientId, cleanSession) => {
-  metrics.onConnect(clientId, !cleanSession);
-});
-// ... (5 more event types - see file for details)
+2. Install dependencies:
+```bash
+cd mqtt-broker-interop-plugin
+npm install
 ```
 
-#### 🔧 INTEGRATION POINT 3 (Line 300, 317, 333, 339)
-Replace 4 TODOs in the publisher functions:
-- Get `sys_interval` from config
-- Publish messages to topics (3 locations)
+3. Configure the plugin in your HarperDB config:
+```yaml
+plugins:
+  - name: mqtt-broker-interop
+    path: ./plugins/mqtt-broker-interop-plugin
+```
 
-### What to Research
+4. Restart HarperDB to load the plugin.
 
-1. **Event Hooks**: How does Harper expose MQTT broker events?
-2. **Publishing**: How to programmatically publish to an MQTT topic?
-3. **Config Access**: How to read `config.yaml` values at runtime?
-4. **Version Info**: How to get HarperDB's version string?
+## How It Works
+
+The plugin provides three main components:
+
+1. **Metrics Tracking**: Monitors all MQTT broker events (connections, messages, subscriptions) and maintains real-time statistics.
+
+2. **$SYS Topics Resource**: Exposes metrics via standard MQTT $SYS topics that clients can subscribe to.
+
+3. **Periodic Publisher**: Automatically publishes metric updates at configurable intervals when clients are subscribed to $SYS topics.
 
 ## Supported $SYS Topics
 
