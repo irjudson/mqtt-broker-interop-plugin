@@ -35,8 +35,12 @@ export async function handleApplication(scope) {
 		logger.info('[MQTT-Broker-Interop-Plugin:Index]: $SYS topics table created');
 
 		// Register the table as the $SYS resource
+		// Note: We register the table's constructor (class), not the instance
+		// The Resources.set() method expects a class that it will instantiate as needed
 		if (scope.resources) {
-			scope.resources.set('$SYS', sysTopicsTable.constructor);
+			// Get the class from the table instance
+			const TableClass = Object.getPrototypeOf(sysTopicsTable).constructor;
+			scope.resources.set('$SYS', TableClass);
 			logger.info('[MQTT-Broker-Interop-Plugin:Index]: Registered $SYS topic resource');
 		}
 	} else {
