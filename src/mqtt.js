@@ -492,17 +492,19 @@ export function setupMqttMonitoring(server, _logger, _sysInterval) {
   mqttEvents.on('connected', (session, _socket) => {
     const clientId = session?.sessionId;
     const username = session?.user?.username;
-    const cleanSession = session?.cleanSession;
-    logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: Client connected - clientId: ${clientId}, username: ${username}, cleanSession: ${cleanSession}`);
-    metrics.onConnect(clientId, !cleanSession);
+    // In MQTT, clean flag determines if session is persistent (clean=false means persistent)
+    const clean = session?.clean ?? true; // Default to true (non-persistent) if not specified
+    logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: Client connected - clientId: ${clientId}, username: ${username}, clean: ${clean}`);
+    metrics.onConnect(clientId, !clean); // !clean = persistent
   });
 
   // Monitor client disconnections
   mqttEvents.on('disconnected', (session, _socket) => {
     const clientId = session?.sessionId;
-    const cleanSession = session?.cleanSession;
-    logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: Client disconnected - clientId: ${clientId}, cleanSession: ${cleanSession}`);
-    metrics.onDisconnect(clientId, !cleanSession);
+    // In MQTT, clean flag determines if session is persistent (clean=false means persistent)
+    const clean = session?.clean ?? true; // Default to true (non-persistent) if not specified
+    logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: Client disconnected - clientId: ${clientId}, clean: ${clean}`);
+    metrics.onDisconnect(clientId, !clean); // !clean = persistent
   });
 
   // Monitor publish events (messages received from clients)
