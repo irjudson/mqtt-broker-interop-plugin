@@ -1,6 +1,46 @@
+[MQTT-Broker-Interop-Plugin:MQTT]: Initializing MQTT metrics tracking
+Trace: [MQTT-Broker-Interop-Plugin:MQTT]: Updating system metrics
+    at MqttMetrics._updateSystemMetrics (file:///home/irjudson/Projects/harper/mqtt-broker-interop-plugin/src/mqtt.js:186:12)
+    at new MqttMetrics (file:///home/irjudson/Projects/harper/mqtt-broker-interop-plugin/src/mqtt.js:87:10)
+    at file:///home/irjudson/Projects/harper/mqtt-broker-interop-plugin/src/mqtt.js:253:24
+    at ModuleJob.run (node:internal/modules/esm/module_job:377:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:691:26)
+    at async secureImport (/home/irjudson/.nvm/versions/node/v24.11.0/lib/node_modules/harperdb/server/threads/threadServer.js:14:87250)
+    at async handleResourceEntry (/home/irjudson/.nvm/versions/node/v24.11.0/lib/node_modules/harperdb/server/threads/threadServer.js:14:88937)
+    at async Promise.all (index 0)
+    at async AR.handleEntry (/home/irjudson/.nvm/versions/node/v24.11.0/lib/node_modules/harperdb/server/threads/threadServer.js:129:77487)
+    at async Object.handleApplication (/home/irjudson/.nvm/versions/node/v24.11.0/lib/node_modules/harperdb/server/threads/threadServer.js:14:88657)
+[http/1] [trace] [tls]: Assigning TLS for hostname 127.0.0.1 if 2 > 0
+[http/1] [trace] [tls]: Assigning TLS for hostname localhost if 2 > 0
+[http/1] [trace] [tls]: Assigning TLS for hostname 0:0:0:0:0:0:0:1 if 2 > 0
+[http/1] [trace] [tls]: Adding TLS localhost for client cert named localhost hostnames [ '127.0.0.1', 'localhost', '0:0:0:0:0:0:0:1' ] quality 2 best quality 0
+Trace: [MQTT-Broker-Interop-Plugin:MQTT]: Heap usage - current: 66624952, maximum: 66624952
+    at MqttMetrics._updateSystemMetrics (file:///home/irjudson/Projects/harper/mqtt-broker-interop-plugin/src/mqtt.js:192:14)
+    at new MqttMetrics (file:///home/irjudson/Projects/harper/mqtt-broker-interop-plugin/src/mqtt.js:87:10)
+    at file:///home/irjudson/Projects/harper/mqtt-broker-interop-plugin/src/mqtt.js:253:24
+    at ModuleJob.run (node:internal/modules/esm/module_job:377:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:691:26)
+    at async secureImport (/home/irjudson/.nvm/versions/node/v24.11.0/lib/node_modules/harperdb/server/threads/threadServer.js:14:87250)
+    at async handleResourceEntry (/home/irjudson/.nvm/versions/node/v24.11.0/lib/node_modules/harperdb/server/threads/threadServer.js:14:88937)
+    at async Promise.all (index 0)
+    at async AR.handleEntry (/home/irjudson/.nvm/versions/node/v24.11.0/lib/node_modules/harperdb/server/threads/threadServer.js:129:77487)
+    at async Object.handleApplication (/home/irjudson/.nvm/versions/node/v24.11.0/lib/node_modules/harperdb/server/threads/threadServer.js:14:88657)
+[http/1] [warn]: Plugin @harperdb/mqtt-broker-interop-plugin is using the experimental handleApplication API
+[http/1] [info] [@harperdb/mqtt-broker-interop-plugin]: [MQTT-Broker-Interop-Plugin:Index]: Starting plugin initialization
+[MQTT-Broker-Interop-Plugin:MQTT]: MQTT publish interface not available
+HarperDB 4.7.4 successfully started
+
+
+[http/1] [debug] [mqtt]: Received disconnect command, closing MQTT session ::ffff:127.0.0.1
+[http/1] [trace]: Deleting record with id: mqtt-explorer-4a0a33d1, txn timestamp: 2025-11-21T02:52:50.595Z
+[http/1] [debug] [mqtt]: Received TCP connection for MQTT from ::ffff:192.168.2.103
+[MQTT-Broker-Interop-Plugin:MQTT]: Client disconnected - clientId: undefined, cleanSession: undefined
+[MQTT-Broker-Interop-Plugin:MQTT]: Client disconnected - clientId: undefined, persistent: true
+[http/1] [debug] [mqtt]: MQTT connection was closed ::ffff:192.168.2.103
+[http/1] [debug] [mqtt]: Received TCP connection for MQTT from ::ffff:127.0.0.1
 [http/1] [debug] [mqtt]: Auto-authorizing local connection admin
-[http/1] [info]: [MQTT-Broker-Interop-Plugin:MQTT]: Client connected - clientId: mqtt-explorer-4a0a33d1, username: admin, cleanSession: undefined
-[http/1] [debug]: [MQTT-Broker-Interop-Plugin:MQTT]: Client connected - clientId: mqtt-explorer-4a0a33d1, persistent: true
+[MQTT-Broker-Interop-Plugin:MQTT]: Client connected - clientId: mqtt-explorer-4a0a33d1, username: admin, cleanSession: undefined
+[MQTT-Broker-Interop-Plugin:MQTT]: Client connected - clientId: mqtt-explorer-4a0a33d1, persistent: true
 [http/1] [info] [mqtt]: Error: The topic # does not exist, no resource has been defined to handle this topic
     at fR.addSubscription (/home/irjudson/.nvm/versions/node/v24.11.0/lib/node_modules/harperdb/server/threads/threadServer.js:129:54570)
     at Parser.<anonymous> (/home/irjudson/.nvm/versions/node/v24.11.0/lib/node_modules/harperdb/server/threads/threadServer.js:129:64446)
@@ -27,7 +67,3 @@
     at Readable.push (node:internal/streams/readable:390:5) {
   statusCode: 404
 }
-[http/1] [debug] [mqtt]: Received TCP connection for MQTT from ::ffff:192.168.2.103
-[http/1] [info]: [MQTT-Broker-Interop-Plugin:MQTT]: Client disconnected - clientId: undefined, cleanSession: undefined
-[http/1] [debug]: [MQTT-Broker-Interop-Plugin:MQTT]: Client disconnected - clientId: undefined, persistent: true
-[http/1] [debug] [mqtt]: MQTT connection was closed ::ffff:192.168.2.103
