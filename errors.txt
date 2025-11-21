@@ -1,12 +1,7 @@
-[http/1] [debug] [mqtt]: Received TCP connection for MQTT from ::ffff:127.0.0.1
-[http/1] [debug] [mqtt]: Auto-authorizing local connection admin
-[MQTT-Broker-Interop-Plugin:MQTT]: Client connected - clientId: mqtt-explorer-4a0a33d1, username: admin, clean: true
-[MQTT-Broker-Interop-Plugin:MQTT]: Client connected - clientId: mqtt-explorer-4a0a33d1, persistent: false
+MQTT-Broker-Interop-Plugin:MQTT]: Client connected - clientId: mqtt-explorer-4a0a33d1, persistent: false
 [MQTT-Broker-Interop-Plugin:MQTT]: New maximum clients reached: 1
-[http/1] [error] [mqtt]: TypeError: g.subscribe is not a function
-    at /home/irjudson/.nvm/versions/node/v24.11.0/lib/node_modules/harperdb/server/threads/threadServer.js:129:55766
-    at transaction (/home/irjudson/.nvm/versions/node/v24.11.0/lib/node_modules/harperdb/server/threads/threadServer.js:1:57778)
-    at fR.addSubscription (/home/irjudson/.nvm/versions/node/v24.11.0/lib/node_modules/harperdb/server/threads/threadServer.js:129:55651)
+[http/1] [info] [mqtt]: Error: The topic # does not exist, no resource has been defined to handle this topic
+    at fR.addSubscription (/home/irjudson/.nvm/versions/node/v24.11.0/lib/node_modules/harperdb/server/threads/threadServer.js:129:54570)
     at Parser.<anonymous> (/home/irjudson/.nvm/versions/node/v24.11.0/lib/node_modules/harperdb/server/threads/threadServer.js:129:64446)
     at Parser.emit (node:events:508:28)
     at Parser._newPacket (/home/irjudson/.nvm/versions/node/v24.11.0/lib/node_modules/harperdb/node_modules/mqtt-packet/parser.js:792:12)
@@ -14,10 +9,12 @@
     at Socket.onMessage (/home/irjudson/.nvm/versions/node/v24.11.0/lib/node_modules/harperdb/server/threads/threadServer.js:129:61834)
     at Socket.emit (node:events:508:28)
     at addChunk (node:internal/streams/readable:559:12)
-[http/1] [error] [mqtt]: TypeError: g.subscribe is not a function
-    at /home/irjudson/.nvm/versions/node/v24.11.0/lib/node_modules/harperdb/server/threads/threadServer.js:129:55766
-    at transaction (/home/irjudson/.nvm/versions/node/v24.11.0/lib/node_modules/harperdb/server/threads/threadServer.js:1:57778)
-    at fR.addSubscription (/home/irjudson/.nvm/versions/node/v24.11.0/lib/node_modules/harperdb/server/threads/threadServer.js:129:55651)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:510:3)
+    at Readable.push (node:internal/streams/readable:390:5) {
+  statusCode: 404
+}
+[http/1] [info] [mqtt]: Error: The topic $SYS/# does not exist, no resource has been defined to handle this topic
+    at fR.addSubscription (/home/irjudson/.nvm/versions/node/v24.11.0/lib/node_modules/harperdb/server/threads/threadServer.js:129:54570)
     at Parser.<anonymous> (/home/irjudson/.nvm/versions/node/v24.11.0/lib/node_modules/harperdb/server/threads/threadServer.js:129:64446)
     at Parser.emit (node:events:508:28)
     at Parser._newPacket (/home/irjudson/.nvm/versions/node/v24.11.0/lib/node_modules/harperdb/node_modules/mqtt-packet/parser.js:792:12)
@@ -25,11 +22,10 @@
     at Socket.onMessage (/home/irjudson/.nvm/versions/node/v24.11.0/lib/node_modules/harperdb/server/threads/threadServer.js:129:61834)
     at Socket.emit (node:events:508:28)
     at addChunk (node:internal/streams/readable:559:12)
-[http/1] [debug] [mqtt]: Received TCP connection for MQTT from ::ffff:192.168.2.103
-[MQTT-Broker-Interop-Plugin:MQTT]: Disconnect event with no session (pre-auth disconnect)
-[http/1] [debug] [mqtt]: MQTT connection was closed ::ffff:192.168.2.103
-[http/1] [debug] [mqtt]: Received TCP connection for MQTT from ::ffff:192.168.2.131
-[MQTT-Broker-Interop-Plugin:MQTT]: Client disconnected - clientId: mqtt-explorer-4a0a33d1, persistent: false
-[MQTT-Broker-Interop-Plugin:MQTT]: Client disconnected - clientId: mqtt-explorer-4a0a33d1, persistent: false
-[http/1] [debug] [mqtt]: Received disconnect command, closing MQTT session ::ffff:127.0.0.1
-[http/1] [trace]: Deleting record with id: mqtt-explorer-4a0a33d1, txn timestamp: 2025-11-21T03:32:35.175Z
+    at readableAddChunkPushByteMode (node:internal/streams/readable:510:3)
+    at Readable.push (node:internal/streams/readable:390:5) {
+  statusCode: 404
+}
+[main/0] [trace] [storage]: Defining hdb_raw_analytics in system
+[main/0] [trace] [storage]: hdb_raw_analytics table loading, running index
+[main/0] [trace] [storage]: hdb_raw_analytics table loaded
