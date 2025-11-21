@@ -19,7 +19,9 @@
 	"main": "dist/index.js",
 	"exports": {
 		".": "./src/index.js",
-		"./config": "./config.yaml"
+		"./config": "./config.yaml",
+		"./#": "./#.js",
+		"./$SYS": "./$SYS.js"
 	},
 	"files": [
 		"dist/",
