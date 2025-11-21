@@ -43,6 +43,16 @@ export async function handleApplication(scope) {
 		logger.warn('[MQTT-Broker-Interop-Plugin:Index]: ensureTable not available, cannot create $SYS topics table');
 	}
 
+	// Register wildcard # handler for all non-$SYS topics
+	if (scope.resources) {
+		logger.info('[MQTT-Broker-Interop-Plugin:Index]: Registering # wildcard resource');
+		const { WildcardTopicsResource } = await import('./resources.js');
+		scope.resources.set('#', { Resource: WildcardTopicsResource });
+		logger.info('[MQTT-Broker-Interop-Plugin:Index]: Registered # wildcard resource');
+	} else {
+		logger.warn('[MQTT-Broker-Interop-Plugin:Index]: No resources Map available for # wildcard registration');
+	}
+
 	// Setup MQTT event monitoring (on worker threads)
 	if (server?.mqtt?.events) {
 		logger.info('[MQTT-Broker-Interop-Plugin:Index]: MQTT events available, setting up event monitoring on worker thread');
