@@ -485,22 +485,27 @@ export function setupMqttMonitoring(server, _logger, _sysInterval) {
   server.logger.debug('[MQTT-Broker-Interop-Plugin:MQTT]: MQTT events object obtained');
 
   // Monitor client connections
-  mqttEvents.on('connected', (data) => {
-    const { clientId, username, cleanSession } = data;
+  mqttEvents.on('connected', (session, _socket) => {
+    const clientId = session?.sessionId;
+    const username = session?.user?.username;
+    const cleanSession = session?.cleanSession;
     server.logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: Client connected - clientId: ${clientId}, username: ${username}, cleanSession: ${cleanSession}`);
     metrics.onConnect(clientId, !cleanSession);
   });
 
   // Monitor client disconnections
-  mqttEvents.on('disconnected', (data) => {
-    const { clientId, cleanSession } = data;
+  mqttEvents.on('disconnected', (session, _socket) => {
+    const clientId = session?.sessionId;
+    const cleanSession = session?.cleanSession;
     server.logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: Client disconnected - clientId: ${clientId}, cleanSession: ${cleanSession}`);
     metrics.onDisconnect(clientId, !cleanSession);
   });
 
   // Monitor publish events (messages received from clients)
-  mqttEvents.on('publish', (data) => {
-    const { topic, payload, clientId } = data;
+  mqttEvents.on('publish', (packet, session) => {
+    const topic = packet?.topic;
+    const payload = packet?.payload;
+    const clientId = session?.sessionId;
     const byteCount = payload ? Buffer.byteLength(payload) : 0;
     server.logger.debug(`[MQTT-Broker-Interop-Plugin:MQTT]: Publish received - clientId: ${clientId}, topic: ${topic}, bytes: ${byteCount}`);
     metrics.onPublishReceived({ topic, payload }, byteCount);
@@ -513,15 +518,16 @@ export function setupMqttMonitoring(server, _logger, _sysInterval) {
   });
 
   // Monitor subscription events
-  mqttEvents.on('subscribe', (data) => {
-    const { clientId, topics } = data;
-    if (Array.isArray(topics)) {
-      topics.forEach(topic => {
+  mqttEvents.on('subscribe', (subscriptions, session) => {
+    const clientId = session?.sessionId;
+    if (Array.isArray(subscriptions)) {
+      subscriptions.forEach(sub => {
+        const topic = typeof sub === 'string' ? sub : sub?.topic;
         server.logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: Subscription - clientId: ${clientId}, topic: ${topic}`);
         metrics.onSubscribe(clientId, topic);
 
         // Check if it's a $SYS topic subscription
-        if (topic.startsWith('$SYS/') || topic === '$SYS/#') {
+        if (topic && (topic.startsWith('$SYS/') || topic === '$SYS/#')) {
           server.logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: $SYS topic subscription detected - clientId: ${clientId}, topic: ${topic}`);
           onSysTopicSubscribe(clientId, topic);
         }
@@ -530,15 +536,15 @@ export function setupMqttMonitoring(server, _logger, _sysInterval) {
   });
 
   // Monitor unsubscription events
-  mqttEvents.on('unsubscribe', (data) => {
-    const { clientId, topics } = data;
-    if (Array.isArray(topics)) {
-      topics.forEach(topic => {
+  mqttEvents.on('unsubscribe', (unsubscriptions, session) => {
+    const clientId = session?.sessionId;
+    if (Array.isArray(unsubscriptions)) {
+      unsubscriptions.forEach(topic => {
         server.logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: Unsubscription - clientId: ${clientId}, topic: ${topic}`);
         metrics.onUnsubscribe(clientId, topic);
 
         // Check if it's a $SYS topic unsubscription
-        if (topic.startsWith('$SYS/') || topic === '$SYS/#') {
+        if (topic && (topic.startsWith('$SYS/') || topic === '$SYS/#')) {
           server.logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: $SYS topic unsubscription detected - clientId: ${clientId}, topic: ${topic}`);
           onSysTopicUnsubscribe(clientId, topic);
         }
@@ -548,13 +554,14 @@ export function setupMqttMonitoring(server, _logger, _sysInterval) {
 
   // Monitor retained message events if available
   if (mqttEvents.on) {
-    mqttEvents.on('retained-added', (data) => {
-      server.logger.debug('[MQTT-Broker-Interop-Plugin:MQTT]: Retained message added');
+    mqttEvents.on('retained-added', (packet) => {
+      const topic = packet?.topic;
+      server.logger.debug(`[MQTT-Broker-Interop-Plugin:MQTT]: Retained message added - topic: ${topic}`);
       metrics.onRetainedMessageAdded();
     });
 
-    mqttEvents.on('retained-removed', (data) => {
-      server.logger.debug('[MQTT-Broker-Interop-Plugin:MQTT]: Retained message removed');
+    mqttEvents.on('retained-removed', (topic) => {
+      server.logger.debug(`[MQTT-Broker-Interop-Plugin:MQTT]: Retained message removed - topic: ${topic}`);
       metrics.onRetainedMessageRemoved();
     });
   }
