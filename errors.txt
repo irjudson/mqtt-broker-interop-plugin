@@ -1,10 +1,7 @@
-
-                    HarperDB, Inc. Denver, CO.
-
-[main/0] [debug]: Checking to make sure hdb is installed
+main/0] [debug]: Checking to make sure hdb is installed
 [main/0] [debug]: Checking for service clustering
 [main/0] [trace]: Log rotate enabled, maxSize: 64M interval: null
-[main/0] [info]: HarperDB PID 2934552
+[main/0] [info]: HarperDB PID 2942542
 [main/0] [info]: Checking if HDB software has been updated
 [main/0] [trace]: CA named: HarperDB-Certificate-Authority-localhost found with matching private key
 [main/0] [trace]: Assigning TLS for hostname 127.0.0.1 if 2 > 0
@@ -19,7 +16,7 @@
 [main/0] [trace]: Defining hdb_session in system
 [main/0] [trace]: hdb_session table loading, running index
 [main/0] [trace]: hdb_session table loaded
-Debugger listening on ws://127.0.0.1:9229/e0277f5d-b9f9-401d-9303-bd038a060ead
+Debugger listening on ws://127.0.0.1:9229/6758902d-3aab-4d07-a84e-d6a27ca6ccf5
 For help, see: https://nodejs.org/en/docs/inspector
 [main/0] [trace]: Defining hdb_durable_session in system
 [main/0] [trace]: hdb_durable_session table loading, running index
@@ -47,7 +44,7 @@ Trace: [MQTT-Broker-Interop-Plugin:MQTT]: Updating system metrics
     at async loadComponent (/home/irjudson/.nvm/versions/node/v24.11.0/lib/node_modules/harperdb/bin/harperdb.js:134:86739)
     at async Promise.all (index 0)
     at async loadRootComponents (/home/irjudson/.nvm/versions/node/v24.11.0/lib/node_modules/harperdb/bin/harperdb.js:134:90829)
-Trace: [MQTT-Broker-Interop-Plugin:MQTT]: Heap usage - current: 53828120, maximum: 53828120
+Trace: [MQTT-Broker-Interop-Plugin:MQTT]: Heap usage - current: 53811504, maximum: 53811504
     at MqttMetrics._updateSystemMetrics (file:///home/irjudson/Projects/harper/mqtt-broker-interop-plugin/src/mqtt.js:192:14)
     at new MqttMetrics (file:///home/irjudson/Projects/harper/mqtt-broker-interop-plugin/src/mqtt.js:87:10)
     at file:///home/irjudson/Projects/harper/mqtt-broker-interop-plugin/src/mqtt.js:253:24
@@ -97,7 +94,7 @@ Trace: [MQTT-Broker-Interop-Plugin:MQTT]: Heap usage - current: 53828120, maximu
 [http/1] [trace]: Adding TLS localhost for [ 9933 ] cert named localhost hostnames [ '127.0.0.1', 'localhost', '0:0:0:0:0:0:0:1' ] quality 2 best quality 0
 [http/1] [debug]: In Fastify server/home/irjudson/Projects/harper/application-template
 [http/1] [debug]: Running with NODE_ENV set as: undefined
-[http/1] [debug]: HarperDB server process 2934552 starting up.
+[http/1] [debug]: HarperDB server process 2942542 starting up.
 [http/1] [trace]: Configuring HarperDB process.
 [http/1] [trace] [tls]: Assigning TLS for hostname 127.0.0.1 if 2 > 0
 [http/1] [trace] [tls]: Assigning TLS for hostname localhost if 2 > 0
@@ -128,7 +125,7 @@ Trace: [MQTT-Broker-Interop-Plugin:MQTT]: Updating system metrics
 [http/1] [trace] [tls]: Assigning TLS for hostname localhost if 2 > 0
 [http/1] [trace] [tls]: Assigning TLS for hostname 0:0:0:0:0:0:0:1 if 2 > 0
 [http/1] [trace] [tls]: Adding TLS localhost for client cert named localhost hostnames [ '127.0.0.1', 'localhost', '0:0:0:0:0:0:0:1' ] quality 2 best quality 0
-Trace: [MQTT-Broker-Interop-Plugin:MQTT]: Heap usage - current: 58320400, maximum: 58320400
+Trace: [MQTT-Broker-Interop-Plugin:MQTT]: Heap usage - current: 58381208, maximum: 58381208
     at MqttMetrics._updateSystemMetrics (file:///home/irjudson/Projects/harper/mqtt-broker-interop-plugin/src/mqtt.js:192:14)
     at new MqttMetrics (file:///home/irjudson/Projects/harper/mqtt-broker-interop-plugin/src/mqtt.js:87:10)
     at file:///home/irjudson/Projects/harper/mqtt-broker-interop-plugin/src/mqtt.js:253:24
@@ -140,13 +137,55 @@ Trace: [MQTT-Broker-Interop-Plugin:MQTT]: Heap usage - current: 58320400, maximu
     at async AR.handleEntry (/home/irjudson/.nvm/versions/node/v24.11.0/lib/node_modules/harperdb/server/threads/threadServer.js:129:77487)
     at async Object.handleApplication (/home/irjudson/.nvm/versions/node/v24.11.0/lib/node_modules/harperdb/server/threads/threadServer.js:14:88657)
 [http/1] [warn]: Plugin @harperdb/mqtt-broker-interop-plugin is using the experimental handleApplication API
+[http/1] [info] [@harperdb/mqtt-broker-interop-plugin]: [MQTT-Broker-Interop-Plugin:Index]: Starting plugin initialization
+[MQTT-Broker-Interop-Plugin:MQTT]: MQTT publish interface not available
+[http/1] [debug] [@harperdb/mqtt-broker-interop-plugin]: [MQTT-Broker-Interop-Plugin:Index]: Scope options: ["package","debug","sys_interval"]
+[MQTT-Broker-Interop-Plugin:ConfigLoader]: Loading configuration
+[MQTT-Broker-Interop-Plugin:ConfigLoader]: Using config object passed directly
+[MQTT-Broker-Interop-Plugin:ConfigLoader]: Successfully loaded config from: object
+[http/1] [info] [@harperdb/mqtt-broker-interop-plugin]: [MQTT-Broker-Interop-Plugin:Index]: Configuration loaded - sys_interval: 10s
+[http/1] [info] [@harperdb/mqtt-broker-interop-plugin]: [MQTT-Broker-Interop-Plugin:Index]: Initializing MQTT Broker Interop Plugin
+[http/1] [info] [@harperdb/mqtt-broker-interop-plugin]: [MQTT-Broker-Interop-Plugin:Index]: MQTT events available, setting up event monitoring on worker thread
+[MQTT-Broker-Interop-Plugin:MQTT]: Setting up MQTT monitoring
+[MQTT-Broker-Interop-Plugin:MQTT]: MQTT events object obtained
+[MQTT-Broker-Interop-Plugin:MQTT]: MQTT event monitoring setup complete
+[http/1] [info] [@harperdb/mqtt-broker-interop-plugin]: [MQTT-Broker-Interop-Plugin:Index]: Setting up $SYS topics publisher
+[MQTT-Broker-Interop-Plugin:MQTT]: Setting up $SYS topics publisher
+[MQTT-Broker-Interop-Plugin:MQTT]: $SYS interval configured: 10s
+[MQTT-Broker-Interop-Plugin:MQTT]: Initializing MQTT publish table
+[MQTT-Broker-Interop-Plugin:MQTT]: $SYS topics publisher configured with 10s interval
+[http/1] [info] [@harperdb/mqtt-broker-interop-plugin]: [MQTT-Broker-Interop-Plugin:Index]: MQTT Broker Interop Plugin initialized successfully
+[http/1] [trace] [tls]: Assigning TLS for hostname 127.0.0.1 if 2 > 0
+[http/1] [trace] [tls]: Assigning TLS for hostname localhost if 2 > 0
+[http/1] [trace] [tls]: Assigning TLS for hostname 0:0:0:0:0:0:0:1 if 2 > 0
+[http/1] [trace] [tls]: Adding TLS localhost for client cert named localhost hostnames [ '127.0.0.1', 'localhost', '0:0:0:0:0:0:0:1' ] quality 2 best quality 0
+[http/1] [trace]: Listening on port 1883 1
+[http/1] [trace]: Listening on port 8883 1
+[http/1] [trace]: Listening on port 9925 1
+[http/1] [trace]: Listening on port 9926 1
+[http/1] [trace]: Listening on port 9933 1
+[http/1] [trace]: Listening on port all 1
+[http/1] [info]: Domain socket listening on /home/irjudson/hdb/operations-server
 
+Hostname:           localhost
+Worker Threads:     1
+Root Path:          /home/irjudson/hdb
+Debugging:          enabled: true
+Logging:            level: trace, location: /home/irjudson/hdb/log/hdb.log, stdout/err
+Default:            HTTP (and WS): 9926, CORS: enabled for *
+Operations API:     HTTP: 9925, CORS: enabled for *, unix socket: /home/irjudson/hdb/operations-server
+MQTT:               TCP: 1883, TLS: 8883, WS: 9926
+Replication:        WS: 9925, WSS: 9933
+REST:               HTTP: 9926, WS: 9926, HTTP: 9926
 
-
-http/1] [debug] [mqtt]: Received TCP connection for MQTT from ::ffff:127.0.0.1
+Note that log messages are being sent to the console (stdout and stderr) in addition to the log file /home/irjudson/hdb/log/hdb.log. This can be disabled by setting logging.stdStreams to false, and the log file can be directly monitored/tailed.
+HarperDB 4.7.4 successfully started
+[main/0] [notify]: HarperDB successfully started.
+[http/1] [debug] [mqtt]: Received TCP connection for MQTT from ::ffff:127.0.0.1
 [http/1] [debug] [mqtt]: Auto-authorizing local connection admin
 [MQTT-Broker-Interop-Plugin:MQTT]: Client connected - clientId: mqtt-explorer-4a0a33d1, username: admin, clean: true
 [MQTT-Broker-Interop-Plugin:MQTT]: Client connected - clientId: mqtt-explorer-4a0a33d1, persistent: false
+[MQTT-Broker-Interop-Plugin:MQTT]: New maximum clients reached: 1
 [http/1] [info] [mqtt]: Error: The topic # does not exist, no resource has been defined to handle this topic
     at fR.addSubscription (/home/irjudson/.nvm/versions/node/v24.11.0/lib/node_modules/harperdb/server/threads/threadServer.js:129:54570)
     at Parser.<anonymous> (/home/irjudson/.nvm/versions/node/v24.11.0/lib/node_modules/harperdb/server/threads/threadServer.js:129:64446)
@@ -173,7 +212,27 @@ http/1] [debug] [mqtt]: Received TCP connection for MQTT from ::ffff:127.0.0.1
     at Readable.push (node:internal/streams/readable:390:5) {
   statusCode: 404
 }
+[main/0] [trace] [storage]: Defining hdb_raw_analytics in system
+[main/0] [trace] [storage]: hdb_raw_analytics table loading, running index
+[main/0] [trace] [storage]: hdb_raw_analytics table loaded
 [http/1] [debug] [mqtt]: Received TCP connection for MQTT from ::ffff:192.168.2.103
+[MQTT-Broker-Interop-Plugin:MQTT]: Disconnect event - session type: undefined, keys: null
 [MQTT-Broker-Interop-Plugin:MQTT]: Client disconnected - clientId: undefined, clean: true
 [MQTT-Broker-Interop-Plugin:MQTT]: Client disconnected - clientId: undefined, persistent: false
-[
+[http/1] [debug] [mqtt]: MQTT connection was closed ::ffff:192.168.2.103
+[MQTT-Broker-Interop-Plugin:MQTT]: Disconnect event - session type: object, keys: listener, sessionId, user, request, socket, subscriptions, awaitingAcks, sessionWasPresent, keepalive, keepaliveTimer
+[MQTT-Broker-Interop-Plugin:MQTT]: Client disconnected - clientId: mqtt-explorer-4a0a33d1, clean: true
+[MQTT-Broker-Interop-Plugin:MQTT]: Client disconnected - clientId: mqtt-explorer-4a0a33d1, persistent: false
+[http/1] [debug] [mqtt]: Received disconnect command, closing MQTT session ::ffff:127.0.0.1
+[http/1] [trace]: Deleting record with id: mqtt-explorer-4a0a33d1, txn timestamp: 2025-11-21T03:02:30.564Z
+[http/1] [debug] [mqtt]: Received TCP connection for MQTT from ::ffff:192.168.2.131
+[http/1] [debug] [mqtt]: Received TCP connection for MQTT from ::ffff:192.168.2.103
+[MQTT-Broker-Interop-Plugin:MQTT]: Disconnect event - session type: undefined, keys: null
+[MQTT-Broker-Interop-Plugin:MQTT]: Client disconnected - clientId: undefined, clean: true
+[MQTT-Broker-Interop-Plugin:MQTT]: Client disconnected - clientId: undefined, persistent: false
+[http/1] [debug] [mqtt]: MQTT connection was closed ::ffff:192.168.2.103
+[main/0] [trace] [storage]: Defining hdb_analytics in system
+[main/0] [trace] [storage]: hdb_analytics table loading, running index
+[main/0] [trace] [storage]: hdb_analytics table loaded
+[main/0] [trace] [analytics]: storeMetric new nodeId: -642994472
+[main/0] [trace] [analytics]: storing metric {"id":[1763694171145.9255,-642994472],"period":60000,"metric":"bytes-received","path":null,"m
