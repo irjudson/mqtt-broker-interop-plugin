@@ -39,3 +39,6 @@ export async function handleApplication(scope) {
 
 	logger.info('[MQTT-Broker-Interop-Plugin:Index]: MQTT Broker Interop Plugin initialized successfully');
 }
+
+// Export resource classes for MQTT topic handling
+export { SysTopicsResource as $SYS, WildcardTopicsResource as Wildcard } from './resources.js';
