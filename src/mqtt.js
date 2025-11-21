@@ -183,13 +183,11 @@ export class MqttMetrics {
   }
 
   _updateSystemMetrics() {
-    logger.trace('[MQTT-Broker-Interop-Plugin:MQTT]: Updating system metrics');
     // Update heap metrics
     if (process.memoryUsage) {
       const memUsage = process.memoryUsage();
       this.heap.current = memUsage.heapUsed;
       this.heap.maximum = Math.max(this.heap.maximum, memUsage.heapUsed);
-      logger.trace(`[MQTT-Broker-Interop-Plugin:MQTT]: Heap usage - current: ${this.heap.current}, maximum: ${this.heap.maximum}`);
     }
 
     // Calculate load averages
@@ -500,13 +498,17 @@ export function setupMqttMonitoring(server, _logger, _sysInterval) {
 
   // Monitor client disconnections
   mqttEvents.on('disconnected', (session, _socket) => {
-    // Log raw session to debug what's actually being passed
-    logger.debug(`[MQTT-Broker-Interop-Plugin:MQTT]: Disconnect event - session type: ${typeof session}, keys: ${session ? Object.keys(session).join(', ') : 'null'}`);
-    const clientId = session?.sessionId;
-    // In MQTT, clean flag determines if session is persistent (clean=false means persistent)
-    const clean = session?.clean ?? true; // Default to true (non-persistent) if not specified
-    logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: Client disconnected - clientId: ${clientId}, clean: ${clean}`);
-    metrics.onDisconnect(clientId, !clean); // !clean = persistent
+    // Handle case where session is undefined (connection failed before auth)
+    if (!session || !session.sessionId) {
+      logger.debug('[MQTT-Broker-Interop-Plugin:MQTT]: Disconnect event with no session (pre-auth disconnect)');
+      return;
+    }
+
+    const clientId = session.sessionId;
+    // Check if session was persistent - sessionWasPresent indicates persistent session
+    const persistent = session.sessionWasPresent || false;
+    logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: Client disconnected - clientId: ${clientId}, persistent: ${persistent}`);
+    metrics.onDisconnect(clientId, persistent);
   });
 
   // Monitor publish events (messages received from clients)
