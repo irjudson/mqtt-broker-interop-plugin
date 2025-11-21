@@ -36,7 +36,7 @@ export async function handleApplication(scope) {
 
 		// Register the table as the $SYS resource
 		if (scope.resources) {
-			scope.resources.set('$SYS', { Resource: sysTopicsTable.constructor });
+			scope.resources.set('$SYS', sysTopicsTable.constructor);
 			logger.info('[MQTT-Broker-Interop-Plugin:Index]: Registered $SYS topic resource');
 		}
 	} else {
@@ -47,7 +47,7 @@ export async function handleApplication(scope) {
 	if (scope.resources) {
 		logger.info('[MQTT-Broker-Interop-Plugin:Index]: Registering # wildcard resource');
 		const { WildcardTopicsResource } = await import('./resources.js');
-		scope.resources.set('#', { Resource: WildcardTopicsResource });
+		scope.resources.set('#', WildcardTopicsResource);
 		logger.info('[MQTT-Broker-Interop-Plugin:Index]: Registered # wildcard resource');
 	} else {
 		logger.warn('[MQTT-Broker-Interop-Plugin:Index]: No resources Map available for # wildcard registration');
