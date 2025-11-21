@@ -590,17 +590,24 @@ let sysIntervalConfig = 10; // Default to 10 seconds
 /**
  * Setup the $SYS topics publisher
  * @param {Object} server - HarperDB server instance
- * @param {Object} logger - Logger instance
+ * @param {Object} _logger - Logger instance (unused, using global)
  * @param {number} sysInterval - Update interval in seconds
+ * @param {Object} sysTable - HarperDB table for publishing $SYS topics
  */
-export function setupSysTopicsPublisher(server, _logger, sysInterval) {
+export function setupSysTopicsPublisher(server, _logger, sysInterval, sysTable = null) {
   logger.info('[MQTT-Broker-Interop-Plugin:MQTT]: Setting up $SYS topics publisher');
   harperServer = server;
   sysIntervalConfig = sysInterval || 10;
+  mqttPublishTable = sysTable; // Store the table for publishing
   logger.debug(`[MQTT-Broker-Interop-Plugin:MQTT]: $SYS interval configured: ${sysIntervalConfig}s`);
 
-  // Initialize the publish table if needed
-  initializePublishTable(server);
+  if (mqttPublishTable) {
+    logger.info('[MQTT-Broker-Interop-Plugin:MQTT]: $SYS topics will publish to table');
+  } else {
+    logger.warn('[MQTT-Broker-Interop-Plugin:MQTT]: No table provided, will attempt direct MQTT publishing');
+    // Initialize the publish table if needed
+    initializePublishTable(server);
+  }
 
   logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: $SYS topics publisher configured with ${sysIntervalConfig}s interval`);
 }
@@ -655,7 +662,7 @@ function stopSysPublisher() {
   }
 }
 
-function publishAllSysTopics() {
+async function publishAllSysTopics() {
   logger.trace('[MQTT-Broker-Interop-Plugin:MQTT]: Publishing all $SYS topics');
   const dynamicTopics = [
     // Client metrics
@@ -720,13 +727,12 @@ function publishAllSysTopics() {
   const sys = new SysTopics();
   let publishCount = 0;
 
-  dynamicTopics.forEach(topic => {
+  // Publish all topics in parallel
+  await Promise.all(dynamicTopics.map(async (topic) => {
     const value = sys.get({ path: topic });
-
-    // Publish to MQTT topic
-    publishToMqtt(topic, String(value));
+    await publishToMqtt(topic, String(value));
     publishCount++;
-  });
+  }));
 
   logger.trace(`[MQTT-Broker-Interop-Plugin:MQTT]: Published ${publishCount} $SYS topics`);
 }
@@ -736,25 +742,25 @@ function publishAllSysTopics() {
  * @param {string} topic - MQTT topic
  * @param {string} message - Message to publish
  */
-function publishToMqtt(topic, message) {
+async function publishToMqtt(topic, message) {
   try {
-    if (harperServer?.mqtt?.publish) {
-      // Use HarperDB's MQTT publish API
+    if (mqttPublishTable && mqttPublishTable.publish) {
+      // Use HarperDB table's publish method - this is the proper Harper way
+      await mqttPublishTable.publish(topic, {
+        topic: topic,
+        value: message,
+        timestamp: Date.now()
+      });
+      logger.trace(`[MQTT-Broker-Interop-Plugin:MQTT]: Published via table to ${topic}: ${message}`);
+    } else if (harperServer?.mqtt?.publish) {
+      // Fallback: Use HarperDB's MQTT publish API
       harperServer.mqtt.publish({
         topic: topic,
         payload: message,
         qos: 0,
         retain: false
       });
-      logger.trace(`[MQTT-Broker-Interop-Plugin:MQTT]: Published to ${topic}: ${message}`);
-    } else if (mqttPublishTable) {
-      // Alternative: Use table-based publishing
-      mqttPublishTable.create({
-        topic: topic,
-        payload: message,
-        timestamp: new Date().toISOString()
-      });
-      logger.trace(`[MQTT-Broker-Interop-Plugin:MQTT]: Published via table to ${topic}: ${message}`);
+      logger.trace(`[MQTT-Broker-Interop-Plugin:MQTT]: Published directly to ${topic}: ${message}`);
     } else {
       logger.warn(`[MQTT-Broker-Interop-Plugin:MQTT]: Cannot publish to ${topic} - no publish interface available`);
     }

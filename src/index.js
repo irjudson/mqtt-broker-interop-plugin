@@ -8,6 +8,7 @@ export async function handleApplication(scope) {
 	const logger = scope.logger;
 	const options = scope.options.getAll();
 	const server = scope.server;
+	const ensureTable = scope.ensureTable;
 
 	logger.info('[MQTT-Broker-Interop-Plugin:Index]: Starting plugin initialization');
 	logger.debug(`[MQTT-Broker-Interop-Plugin:Index]: Scope keys: ${JSON.stringify(Object.keys(scope))}`);
@@ -22,6 +23,26 @@ export async function handleApplication(scope) {
 
 	logger.info('[MQTT-Broker-Interop-Plugin:Index]: Initializing MQTT Broker Interop Plugin');
 
+	// Create $SYS topics table for publish/subscribe
+	let sysTopicsTable = null;
+	if (ensureTable) {
+		logger.info('[MQTT-Broker-Interop-Plugin:Index]: Creating $SYS topics table');
+		sysTopicsTable = ensureTable({
+			table: 'mqtt_sys_topics',
+			database: 'mqtt_monitor',
+			attributes: []
+		});
+		logger.info('[MQTT-Broker-Interop-Plugin:Index]: $SYS topics table created');
+
+		// Register the table as the $SYS resource
+		if (scope.resources) {
+			scope.resources.set('$SYS', { Resource: sysTopicsTable.constructor });
+			logger.info('[MQTT-Broker-Interop-Plugin:Index]: Registered $SYS topic resource');
+		}
+	} else {
+		logger.warn('[MQTT-Broker-Interop-Plugin:Index]: ensureTable not available, cannot create $SYS topics table');
+	}
+
 	// Setup MQTT event monitoring (on worker threads)
 	if (server?.mqtt?.events) {
 		logger.info('[MQTT-Broker-Interop-Plugin:Index]: MQTT events available, setting up event monitoring on worker thread');
@@ -30,28 +51,15 @@ export async function handleApplication(scope) {
 		logger.debug('[MQTT-Broker-Interop-Plugin:Index]: MQTT events not available on this thread');
 	}
 
-	// Setup $SYS topics publisher (on main thread)
-	if (typeof setupSysTopicsPublisher === 'function') {
-		logger.info('[MQTT-Broker-Interop-Plugin:Index]: Setting up $SYS topics publisher');
+	// Setup $SYS topics publisher (on main thread) - pass the table
+	if (typeof setupSysTopicsPublisher === 'function' && sysTopicsTable) {
+		logger.info('[MQTT-Broker-Interop-Plugin:Index]: Setting up $SYS topics publisher with table');
+		setupSysTopicsPublisher(server, logger, sysInterval, sysTopicsTable);
+	} else if (typeof setupSysTopicsPublisher === 'function') {
+		logger.info('[MQTT-Broker-Interop-Plugin:Index]: Setting up $SYS topics publisher without table');
 		setupSysTopicsPublisher(server, logger, sysInterval);
 	} else {
 		logger.warn('[MQTT-Broker-Interop-Plugin:Index]: setupSysTopicsPublisher function not available');
-	}
-
-	// Register MQTT topic resources if resources Map is available
-	if (scope.resources) {
-		logger.info('[MQTT-Broker-Interop-Plugin:Index]: Registering MQTT topic resources');
-		const { SysTopicsResource, WildcardTopicsResource } = await import('./resources.js');
-
-		// Register $SYS topic handler
-		scope.resources.set('$SYS', { Resource: SysTopicsResource });
-		logger.info('[MQTT-Broker-Interop-Plugin:Index]: Registered $SYS topic resource');
-
-		// Register wildcard # handler
-		scope.resources.set('#', { Resource: WildcardTopicsResource });
-		logger.info('[MQTT-Broker-Interop-Plugin:Index]: Registered # wildcard resource');
-	} else {
-		logger.warn('[MQTT-Broker-Interop-Plugin:Index]: No resources Map available in scope for MQTT topic registration');
 	}
 
 	logger.info('[MQTT-Broker-Interop-Plugin:Index]: MQTT Broker Interop Plugin initialized successfully');

@@ -163,6 +163,33 @@ export class SysTopicsResource {
   search(request) {
     return this.get(request);
   }
+
+  /**
+   * Subscribe to MQTT topic updates
+   * Returns an async iterator for real-time updates
+   * @param {Object} request - Request object with path property
+   * @returns {AsyncIterator} - Async iterator for topic updates
+   */
+  async *subscribe(request) {
+    const topic = request.path || request.url;
+    logger.info(`[MQTT-Broker-Interop-Plugin:Resources]: SysTopicsResource subscribe - topic: ${topic}`);
+
+    // Yield initial value
+    const initialValue = this.get(request);
+    if (initialValue !== null) {
+      yield initialValue;
+    }
+
+    // Keep subscription alive - yield updates periodically
+    // The subscription will stay open until the client unsubscribes
+    while (true) {
+      await new Promise(resolve => setTimeout(resolve, 10000)); // 10 second interval
+      const currentValue = this.get(request);
+      if (currentValue !== null) {
+        yield currentValue;
+      }
+    }
+  }
 }
 
 // Export the resource for the $SYS path
@@ -200,6 +227,33 @@ export class WildcardTopicsResource {
 
     logger.trace(`[MQTT-Broker-Interop-Plugin:Resources]: WildcardTopicsResource no match - topic: ${topic}`);
     return null;
+  }
+
+  /**
+   * Subscribe to MQTT topic updates
+   * Returns an async iterator for real-time updates
+   * @param {Object} request - Request object with path property
+   * @returns {AsyncIterator} - Async iterator for topic updates
+   */
+  async *subscribe(request) {
+    const topic = request.path || request.url;
+    logger.info(`[MQTT-Broker-Interop-Plugin:Resources]: WildcardTopicsResource subscribe - topic: ${topic}`);
+
+    // Yield initial value
+    const initialValue = this.get(request);
+    if (initialValue !== null) {
+      yield initialValue;
+    }
+
+    // Keep subscription alive - yield updates periodically
+    // The subscription will stay open until the client unsubscribes
+    while (true) {
+      await new Promise(resolve => setTimeout(resolve, 10000)); // 10 second interval
+      const currentValue = this.get(request);
+      if (currentValue !== null) {
+        yield currentValue;
+      }
+    }
   }
 }
 
