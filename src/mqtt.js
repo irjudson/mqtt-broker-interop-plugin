@@ -500,6 +500,8 @@ export function setupMqttMonitoring(server, _logger, _sysInterval) {
 
   // Monitor client disconnections
   mqttEvents.on('disconnected', (session, _socket) => {
+    // Log raw session to debug what's actually being passed
+    logger.debug(`[MQTT-Broker-Interop-Plugin:MQTT]: Disconnect event - session type: ${typeof session}, keys: ${session ? Object.keys(session).join(', ') : 'null'}`);
     const clientId = session?.sessionId;
     // In MQTT, clean flag determines if session is persistent (clean=false means persistent)
     const clean = session?.clean ?? true; // Default to true (non-persistent) if not specified
