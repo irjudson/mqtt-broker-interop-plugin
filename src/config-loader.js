@@ -11,6 +11,10 @@ import { dirname, join } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+// Access global server and logger
+const server = globalThis.server;
+const logger = server?.logger || console;
+
 /**
  * Load configuration from config.yaml or accept a config object
  * @param {string|Object|null} configPath - Path to config file or config object or options object
