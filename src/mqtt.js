@@ -489,7 +489,7 @@ export function setupMqttMonitoring(server, _logger, _sysInterval) {
     const clientId = session?.sessionId;
     const username = session?.user?.username;
     const cleanSession = session?.cleanSession;
-    server.logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: Client connected - clientId: ${clientId}, username: ${username}, cleanSession: ${cleanSession}`);
+    logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: Client connected - clientId: ${clientId}, username: ${username}, cleanSession: ${cleanSession}`);
     metrics.onConnect(clientId, !cleanSession);
   });
 
@@ -497,7 +497,7 @@ export function setupMqttMonitoring(server, _logger, _sysInterval) {
   mqttEvents.on('disconnected', (session, _socket) => {
     const clientId = session?.sessionId;
     const cleanSession = session?.cleanSession;
-    server.logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: Client disconnected - clientId: ${clientId}, cleanSession: ${cleanSession}`);
+    logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: Client disconnected - clientId: ${clientId}, cleanSession: ${cleanSession}`);
     metrics.onDisconnect(clientId, !cleanSession);
   });
 
@@ -523,12 +523,12 @@ export function setupMqttMonitoring(server, _logger, _sysInterval) {
     if (Array.isArray(subscriptions)) {
       subscriptions.forEach(sub => {
         const topic = typeof sub === 'string' ? sub : sub?.topic;
-        server.logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: Subscription - clientId: ${clientId}, topic: ${topic}`);
+        logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: Subscription - clientId: ${clientId}, topic: ${topic}`);
         metrics.onSubscribe(clientId, topic);
 
         // Check if it's a $SYS topic subscription
         if (topic && (topic.startsWith('$SYS/') || topic === '$SYS/#')) {
-          server.logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: $SYS topic subscription detected - clientId: ${clientId}, topic: ${topic}`);
+          logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: $SYS topic subscription detected - clientId: ${clientId}, topic: ${topic}`);
           onSysTopicSubscribe(clientId, topic);
         }
       });
@@ -540,12 +540,12 @@ export function setupMqttMonitoring(server, _logger, _sysInterval) {
     const clientId = session?.sessionId;
     if (Array.isArray(unsubscriptions)) {
       unsubscriptions.forEach(topic => {
-        server.logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: Unsubscription - clientId: ${clientId}, topic: ${topic}`);
+        logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: Unsubscription - clientId: ${clientId}, topic: ${topic}`);
         metrics.onUnsubscribe(clientId, topic);
 
         // Check if it's a $SYS topic unsubscription
         if (topic && (topic.startsWith('$SYS/') || topic === '$SYS/#')) {
-          server.logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: $SYS topic unsubscription detected - clientId: ${clientId}, topic: ${topic}`);
+          logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: $SYS topic unsubscription detected - clientId: ${clientId}, topic: ${topic}`);
           onSysTopicUnsubscribe(clientId, topic);
         }
       });
@@ -556,12 +556,12 @@ export function setupMqttMonitoring(server, _logger, _sysInterval) {
   if (mqttEvents.on) {
     mqttEvents.on('retained-added', (packet) => {
       const topic = packet?.topic;
-      server.logger.debug(`[MQTT-Broker-Interop-Plugin:MQTT]: Retained message added - topic: ${topic}`);
+      logger.debug(`[MQTT-Broker-Interop-Plugin:MQTT]: Retained message added - topic: ${topic}`);
       metrics.onRetainedMessageAdded();
     });
 
     mqttEvents.on('retained-removed', (topic) => {
-      server.logger.debug(`[MQTT-Broker-Interop-Plugin:MQTT]: Retained message removed - topic: ${topic}`);
+      logger.debug(`[MQTT-Broker-Interop-Plugin:MQTT]: Retained message removed - topic: ${topic}`);
       metrics.onRetainedMessageRemoved();
     });
   }
