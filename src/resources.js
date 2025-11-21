@@ -83,12 +83,12 @@ export class SysTopicsResource {
    */
   get(request) {
     const topic = request.path || request.url;
-    server.logger.trace(`[MQTT-Broker-Interop-Plugin:Resources]: SysTopicsResource GET request - topic: ${topic}`);
+    logger.trace(`[MQTT-Broker-Interop-Plugin:Resources]: SysTopicsResource GET request - topic: ${topic}`);
 
     // Handle wildcard /#  - all non-$SYS topics
     if (topic === '/#' || topic === '#') {
       const allTopics = Array.from(topicRegistry);
-      server.logger.debug(`[MQTT-Broker-Interop-Plugin:Resources]: Returning all non-$SYS topics - count: ${allTopics.length}`);
+      logger.debug(`[MQTT-Broker-Interop-Plugin:Resources]: Returning all non-$SYS topics - count: ${allTopics.length}`);
 
       return {
         pattern: '/#',
@@ -111,7 +111,7 @@ export class SysTopicsResource {
           timestamp: new Date().toISOString()
         })).filter(item => item.value !== null)
       };
-      server.logger.debug(`[MQTT-Broker-Interop-Plugin:Resources]: Returning all $SYS topics - count: ${result.topics.length}`);
+      logger.debug(`[MQTT-Broker-Interop-Plugin:Resources]: Returning all $SYS topics - count: ${result.topics.length}`);
       return result;
     }
 
@@ -119,7 +119,7 @@ export class SysTopicsResource {
     if (topic && topic.startsWith('$SYS/') && topic.includes('#')) {
       const prefix = topic.replace('/#', '/').replace('#', '');
       const matchingTopics = ALL_SYS_TOPICS.filter(t => t.startsWith(prefix));
-      server.logger.debug(`[MQTT-Broker-Interop-Plugin:Resources]: Partial $SYS wildcard - prefix: ${prefix}, matches: ${matchingTopics.length}`);
+      logger.debug(`[MQTT-Broker-Interop-Plugin:Resources]: Partial $SYS wildcard - prefix: ${prefix}, matches: ${matchingTopics.length}`);
 
       return {
         pattern: topic,
@@ -137,7 +137,7 @@ export class SysTopicsResource {
       const value = sysTopics.get({ path: topic });
 
       if (value !== null && value !== undefined) {
-        server.logger.trace(`[MQTT-Broker-Interop-Plugin:Resources]: Individual $SYS topic - topic: ${topic}, value: ${value}`);
+        logger.trace(`[MQTT-Broker-Interop-Plugin:Resources]: Individual $SYS topic - topic: ${topic}, value: ${value}`);
         return {
           topic: topic,
           value: value,
@@ -147,7 +147,7 @@ export class SysTopicsResource {
     }
 
     // Unknown topic
-    server.logger.debug(`[MQTT-Broker-Interop-Plugin:Resources]: Unknown topic request - ${topic}`);
+    logger.debug(`[MQTT-Broker-Interop-Plugin:Resources]: Unknown topic request - ${topic}`);
     return null;
   }
 
@@ -176,13 +176,13 @@ export class WildcardTopicsResource {
    */
   get(request) {
     const topic = request.path || request.url;
-    server.logger.trace(`[MQTT-Broker-Interop-Plugin:Resources]: WildcardTopicsResource GET request - topic: ${topic}`);
+    logger.trace(`[MQTT-Broker-Interop-Plugin:Resources]: WildcardTopicsResource GET request - topic: ${topic}`);
 
     // Handle /# wildcard - return all non-$SYS topics
     if (topic === '/#' || topic === '#' || topic === '/') {
       // Filter out any $SYS topics that might be in the registry
       const allTopics = Array.from(topicRegistry).filter(t => !t.startsWith('$SYS/'));
-      server.logger.debug(`[MQTT-Broker-Interop-Plugin:Resources]: WildcardTopicsResource returning topics - count: ${allTopics.length}`);
+      logger.debug(`[MQTT-Broker-Interop-Plugin:Resources]: WildcardTopicsResource returning topics - count: ${allTopics.length}`);
 
       return {
         pattern: '/#',
@@ -194,7 +194,7 @@ export class WildcardTopicsResource {
       };
     }
 
-    server.logger.trace(`[MQTT-Broker-Interop-Plugin:Resources]: WildcardTopicsResource no match - topic: ${topic}`);
+    logger.trace(`[MQTT-Broker-Interop-Plugin:Resources]: WildcardTopicsResource no match - topic: ${topic}`);
     return null;
   }
 }
@@ -204,7 +204,7 @@ export const Wildcard = WildcardTopicsResource;
 
 // Export a helper to get current metrics directly
 export function getMetrics() {
-  server.logger.trace('[MQTT-Broker-Interop-Plugin:Resources]: getMetrics called');
+  logger.trace('[MQTT-Broker-Interop-Plugin:Resources]: getMetrics called');
   const metricsSnapshot = {
     startTime: metrics.startTime,
     clients: { ...metrics.clients },
@@ -216,6 +216,6 @@ export function getMetrics() {
     heap: { ...metrics.heap },
     load: JSON.parse(JSON.stringify(metrics.load))
   };
-  server.logger.debug(`[MQTT-Broker-Interop-Plugin:Resources]: Returning metrics snapshot - clients: ${metricsSnapshot.clients.connected}, messages: ${metricsSnapshot.messages.received}`);
+  logger.debug(`[MQTT-Broker-Interop-Plugin:Resources]: Returning metrics snapshot - clients: ${metricsSnapshot.clients.connected}, messages: ${metricsSnapshot.messages.received}`);
   return metricsSnapshot;
 }

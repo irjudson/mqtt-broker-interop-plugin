@@ -1,0 +1,27 @@
+
+[http/1] [debug] [mqtt]: Received TCP connection for MQTT from ::ffff:192.168.2.103
+[http/1] [error]: uncaughtException TypeError: Cannot read properties of undefined (reading 'info')
+    at EventEmitter.<anonymous> (file:///home/irjudson/Projects/harper/mqtt-broker-interop-plugin/src/mqtt.js:500:19)
+    at EventEmitter.emit (node:events:508:28)
+    at Socket.onClose (/home/irjudson/.nvm/versions/node/v24.11.0/lib/node_modules/harperdb/server/threads/threadServer.js:129:61914)
+    at Socket.emit (node:events:508:28)
+    at TCP.<anonymous> (node:net:346:12)
+[main/0] [trace]: [MQTT-Broker-Interop-Plugin:MQTT]: Updating system metrics
+[main/0] [trace]: [MQTT-Broker-Interop-Plugin:MQTT]: Heap usage - current: 63611008, maximum: 63611008
+[http/1] [trace]: [MQTT-Broker-Interop-Plugin:MQTT]: Updating system metrics
+[http/1] [trace]: [MQTT-Broker-Interop-Plugin:MQTT]: Heap usage - current: 73370504, maximum: 73370504
+[http/1] [debug] [mqtt]: Received TCP connection for MQTT from ::ffff:192.168.2.103
+[http/1] [error]: uncaughtException TypeError: Cannot read properties of undefined (reading 'info')
+    at EventEmitter.<anonymous> (file:///home/irjudson/Projects/harper/mqtt-broker-interop-plugin/src/mqtt.js:500:19)
+    at EventEmitter.emit (node:events:508:28)
+    at Socket.onClose (/home/irjudson/.nvm/versions/node/v24.11.0/lib/node_modules/harperdb/server/threads/threadServer.js:129:61914)
+    at Socket.emit (node:events:508:28)
+    at TCP.<anonymous> (node:net:346:12)
+[http/1] [debug] [mqtt]: Received TCP connection for MQTT from ::ffff:192.168.2.103
+[http/1] [error]: uncaughtException TypeError: Cannot read properties of undefined (reading 'info')
+    at EventEmitter.<anonymous> (file:///home/irjudson/Projects/harper/mqtt-broker-interop-plugin/src/mqtt.js:500:19)
+    at EventEmitter.emit (node:events:508:28)
+    at Socket.onClose (/home/irjudson/.nvm/versions/node/v24.11.0/lib/node_modules/harperdb/server/threads/threadServer.js:129:61914)
+    at Socket.emit (node:events:508:28)
+    at TCP.<anonymous> (node:net:346:12)
+[
