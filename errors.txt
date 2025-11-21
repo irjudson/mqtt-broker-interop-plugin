@@ -1,3 +1,117 @@
+
+                    HarperDB, Inc. Denver, CO.
+
+[main/0] [debug]: Checking to make sure hdb is installed
+[main/0] [debug]: Checking for service clustering
+[main/0] [trace]: Log rotate enabled, maxSize: 64M interval: null
+[main/0] [info]: HarperDB PID 2934552
+[main/0] [info]: Checking if HDB software has been updated
+[main/0] [trace]: CA named: HarperDB-Certificate-Authority-localhost found with matching private key
+[main/0] [trace]: Assigning TLS for hostname 127.0.0.1 if 2 > 0
+[main/0] [trace]: Assigning TLS for hostname localhost if 2 > 0
+[main/0] [trace]: Assigning TLS for hostname 0:0:0:0:0:0:0:1 if 2 > 0
+[main/0] [trace]: Adding TLS localhost for client cert named localhost hostnames [ '127.0.0.1', 'localhost', '0:0:0:0:0:0:0:1' ] quality 2 best quality 0
+[main/0] [trace]: recordHostname server.hostname: localhost
+[main/0] [trace]: recordHostname nodeId: -642994472
+[main/0] [trace]: Defining hdb_analytics_hostname in system
+[main/0] [trace]: hdb_analytics_hostname table loading, running index
+[main/0] [trace]: hdb_analytics_hostname table loaded
+[main/0] [trace]: Defining hdb_session in system
+[main/0] [trace]: hdb_session table loading, running index
+[main/0] [trace]: hdb_session table loaded
+Debugger listening on ws://127.0.0.1:9229/e0277f5d-b9f9-401d-9303-bd038a060ead
+For help, see: https://nodejs.org/en/docs/inspector
+[main/0] [trace]: Defining hdb_durable_session in system
+[main/0] [trace]: hdb_durable_session table loading, running index
+[main/0] [trace]: hdb_durable_session table loaded
+[main/0] [trace]: Defining hdb_session_will in system
+[main/0] [trace]: hdb_session_will table loading, running index
+[main/0] [trace]: hdb_session_will table loaded
+[main/0] [debug]: []
+[main/0] [info]: All root applications loaded
+[main/0] [trace] [storage]: Defining hdb_status in system
+[main/0] [trace] [storage]: hdb_status table loading, running index
+[main/0] [trace] [storage]: hdb_status table loaded
+[main/0] [trace] [storage]: Defining TableName in data
+[main/0] [trace] [storage]: TableName table loading, running index
+[main/0] [trace] [storage]: TableName table loaded
+[MQTT-Broker-Interop-Plugin:MQTT]: Initializing MQTT metrics tracking
+Trace: [MQTT-Broker-Interop-Plugin:MQTT]: Updating system metrics
+    at MqttMetrics._updateSystemMetrics (file:///home/irjudson/Projects/harper/mqtt-broker-interop-plugin/src/mqtt.js:186:12)
+    at new MqttMetrics (file:///home/irjudson/Projects/harper/mqtt-broker-interop-plugin/src/mqtt.js:87:10)
+    at file:///home/irjudson/Projects/harper/mqtt-broker-interop-plugin/src/mqtt.js:253:24
+    at ModuleJob.run (node:internal/modules/esm/module_job:377:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:691:26)
+    at async secureImport (/home/irjudson/.nvm/versions/node/v24.11.0/lib/node_modules/harperdb/bin/harperdb.js:15:87250)
+    at async loadComponent (/home/irjudson/.nvm/versions/node/v24.11.0/lib/node_modules/harperdb/bin/harperdb.js:134:88670)
+    at async loadComponent (/home/irjudson/.nvm/versions/node/v24.11.0/lib/node_modules/harperdb/bin/harperdb.js:134:86739)
+    at async Promise.all (index 0)
+    at async loadRootComponents (/home/irjudson/.nvm/versions/node/v24.11.0/lib/node_modules/harperdb/bin/harperdb.js:134:90829)
+Trace: [MQTT-Broker-Interop-Plugin:MQTT]: Heap usage - current: 53828120, maximum: 53828120
+    at MqttMetrics._updateSystemMetrics (file:///home/irjudson/Projects/harper/mqtt-broker-interop-plugin/src/mqtt.js:192:14)
+    at new MqttMetrics (file:///home/irjudson/Projects/harper/mqtt-broker-interop-plugin/src/mqtt.js:87:10)
+    at file:///home/irjudson/Projects/harper/mqtt-broker-interop-plugin/src/mqtt.js:253:24
+    at ModuleJob.run (node:internal/modules/esm/module_job:377:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:691:26)
+    at async secureImport (/home/irjudson/.nvm/versions/node/v24.11.0/lib/node_modules/harperdb/bin/harperdb.js:15:87250)
+    at async loadComponent (/home/irjudson/.nvm/versions/node/v24.11.0/lib/node_modules/harperdb/bin/harperdb.js:134:88670)
+    at async loadComponent (/home/irjudson/.nvm/versions/node/v24.11.0/lib/node_modules/harperdb/bin/harperdb.js:134:86739)
+    at async Promise.all (index 0)
+    at async loadRootComponents (/home/irjudson/.nvm/versions/node/v24.11.0/lib/node_modules/harperdb/bin/harperdb.js:134:90829)
+[main/0] [trace] [storage]: Defining hdb_nodes in system
+[main/0] [trace] [storage]: hdb_nodes table loading, running index
+[main/0] [trace] [storage]: hdb_nodes table loaded
+[http/1] [trace]: Unable to get config value because config is uninitialized
+[http/1] [trace]: Config successfully initialized
+[http/1] [trace]: Defining hdb_session in system
+[http/1] [trace]: hdb_session table loading, running index
+[http/1] [trace]: hdb_session table loaded
+[http/1] [trace]: Defining hdb_durable_session in system
+[http/1] [trace]: hdb_durable_session table loading, running index
+[http/1] [trace]: hdb_durable_session table loaded
+[http/1] [trace]: Defining hdb_session_will in system
+[http/1] [trace]: hdb_session_will table loading, running index
+[http/1] [trace]: hdb_session_will table loaded
+[http/1] [trace]: Defining hdb_status in system
+[http/1] [trace]: hdb_status table loading, running index
+[http/1] [trace]: hdb_status table loaded
+[http/1] [trace]: Checking replication status of  data *
+[http/1] [trace]: Setting up replicator subscription to database data
+[http/1] [trace]: Checking replication status of  system *
+[http/1] [trace]: Setting up replicator subscription to database system
+[http/1] [trace]: Setting up replicator subscription to database system
+[http/1] [trace]: Setting up replicator subscription to database system
+[http/1] [trace]: Setting up replicator subscription to database system
+[http/1] [trace]: Setting up replicator subscription to database system
+[http/1] [trace]: Setting up replicator subscription to database system
+[http/1] [trace]: Setting up replicator subscription to database system
+[http/1] [trace]: Setting up replicator subscription to database system
+[http/1] [trace]: Setting up replicator subscription to database system
+[http/1] [trace]: Setting up replicator subscription to database system
+[http/1] [trace]: Defining hdb_nodes in system
+[http/1] [trace]: hdb_nodes table loading, running index
+[http/1] [trace]: hdb_nodes table loaded
+[http/1] [trace]: Assigning TLS for hostname 127.0.0.1 if 2 > 0
+[http/1] [trace]: Assigning TLS for hostname localhost if 2 > 0
+[http/1] [trace]: Assigning TLS for hostname 0:0:0:0:0:0:0:1 if 2 > 0
+[http/1] [trace]: Adding TLS localhost for [ 9933 ] cert named localhost hostnames [ '127.0.0.1', 'localhost', '0:0:0:0:0:0:0:1' ] quality 2 best quality 0
+[http/1] [debug]: In Fastify server/home/irjudson/Projects/harper/application-template
+[http/1] [debug]: Running with NODE_ENV set as: undefined
+[http/1] [debug]: HarperDB server process 2934552 starting up.
+[http/1] [trace]: Configuring HarperDB process.
+[http/1] [trace] [tls]: Assigning TLS for hostname 127.0.0.1 if 2 > 0
+[http/1] [trace] [tls]: Assigning TLS for hostname localhost if 2 > 0
+[http/1] [trace] [tls]: Assigning TLS for hostname 0:0:0:0:0:0:0:1 if 2 > 0
+[http/1] [trace] [tls]: Adding TLS localhost for client cert named localhost hostnames [ '127.0.0.1', 'localhost', '0:0:0:0:0:0:0:1' ] quality 2 best quality 0
+[http/1] [debug]: HarperDB process starting to build HTTP server.
+[http/1] [debug]: HarperDB process starting up HTTP server listener.
+[http/1] [trace] [storage]: Defining TableName in data
+[http/1] [trace] [storage]: TableName table loading, running index
+[http/1] [trace] [storage]: TableName table loaded
+[http/1] [debug] [jsResource]: Initial scan complete, still waiting for 1 pending file reads
+[http/1] [debug] [jsResource]: Registered resource: /Greeting
+[http/1] [debug] [static]: Initial scan complete, still waiting for 3 pending file reads
+[http/1] [debug] [jsResource]: Initial scan complete, still waiting for 1 pending file reads
 [MQTT-Broker-Interop-Plugin:MQTT]: Initializing MQTT metrics tracking
 Trace: [MQTT-Broker-Interop-Plugin:MQTT]: Updating system metrics
     at MqttMetrics._updateSystemMetrics (file:///home/irjudson/Projects/harper/mqtt-broker-interop-plugin/src/mqtt.js:186:12)
@@ -14,7 +128,7 @@ Trace: [MQTT-Broker-Interop-Plugin:MQTT]: Updating system metrics
 [http/1] [trace] [tls]: Assigning TLS for hostname localhost if 2 > 0
 [http/1] [trace] [tls]: Assigning TLS for hostname 0:0:0:0:0:0:0:1 if 2 > 0
 [http/1] [trace] [tls]: Adding TLS localhost for client cert named localhost hostnames [ '127.0.0.1', 'localhost', '0:0:0:0:0:0:0:1' ] quality 2 best quality 0
-Trace: [MQTT-Broker-Interop-Plugin:MQTT]: Heap usage - current: 66624952, maximum: 66624952
+Trace: [MQTT-Broker-Interop-Plugin:MQTT]: Heap usage - current: 58320400, maximum: 58320400
     at MqttMetrics._updateSystemMetrics (file:///home/irjudson/Projects/harper/mqtt-broker-interop-plugin/src/mqtt.js:192:14)
     at new MqttMetrics (file:///home/irjudson/Projects/harper/mqtt-broker-interop-plugin/src/mqtt.js:87:10)
     at file:///home/irjudson/Projects/harper/mqtt-broker-interop-plugin/src/mqtt.js:253:24
@@ -26,21 +140,13 @@ Trace: [MQTT-Broker-Interop-Plugin:MQTT]: Heap usage - current: 66624952, maximu
     at async AR.handleEntry (/home/irjudson/.nvm/versions/node/v24.11.0/lib/node_modules/harperdb/server/threads/threadServer.js:129:77487)
     at async Object.handleApplication (/home/irjudson/.nvm/versions/node/v24.11.0/lib/node_modules/harperdb/server/threads/threadServer.js:14:88657)
 [http/1] [warn]: Plugin @harperdb/mqtt-broker-interop-plugin is using the experimental handleApplication API
-[http/1] [info] [@harperdb/mqtt-broker-interop-plugin]: [MQTT-Broker-Interop-Plugin:Index]: Starting plugin initialization
-[MQTT-Broker-Interop-Plugin:MQTT]: MQTT publish interface not available
-HarperDB 4.7.4 successfully started
 
 
-[http/1] [debug] [mqtt]: Received disconnect command, closing MQTT session ::ffff:127.0.0.1
-[http/1] [trace]: Deleting record with id: mqtt-explorer-4a0a33d1, txn timestamp: 2025-11-21T02:52:50.595Z
-[http/1] [debug] [mqtt]: Received TCP connection for MQTT from ::ffff:192.168.2.103
-[MQTT-Broker-Interop-Plugin:MQTT]: Client disconnected - clientId: undefined, cleanSession: undefined
-[MQTT-Broker-Interop-Plugin:MQTT]: Client disconnected - clientId: undefined, persistent: true
-[http/1] [debug] [mqtt]: MQTT connection was closed ::ffff:192.168.2.103
-[http/1] [debug] [mqtt]: Received TCP connection for MQTT from ::ffff:127.0.0.1
+
+http/1] [debug] [mqtt]: Received TCP connection for MQTT from ::ffff:127.0.0.1
 [http/1] [debug] [mqtt]: Auto-authorizing local connection admin
-[MQTT-Broker-Interop-Plugin:MQTT]: Client connected - clientId: mqtt-explorer-4a0a33d1, username: admin, cleanSession: undefined
-[MQTT-Broker-Interop-Plugin:MQTT]: Client connected - clientId: mqtt-explorer-4a0a33d1, persistent: true
+[MQTT-Broker-Interop-Plugin:MQTT]: Client connected - clientId: mqtt-explorer-4a0a33d1, username: admin, clean: true
+[MQTT-Broker-Interop-Plugin:MQTT]: Client connected - clientId: mqtt-explorer-4a0a33d1, persistent: false
 [http/1] [info] [mqtt]: Error: The topic # does not exist, no resource has been defined to handle this topic
     at fR.addSubscription (/home/irjudson/.nvm/versions/node/v24.11.0/lib/node_modules/harperdb/server/threads/threadServer.js:129:54570)
     at Parser.<anonymous> (/home/irjudson/.nvm/versions/node/v24.11.0/lib/node_modules/harperdb/server/threads/threadServer.js:129:64446)
@@ -67,3 +173,7 @@ HarperDB 4.7.4 successfully started
     at Readable.push (node:internal/streams/readable:390:5) {
   statusCode: 404
 }
+[http/1] [debug] [mqtt]: Received TCP connection for MQTT from ::ffff:192.168.2.103
+[MQTT-Broker-Interop-Plugin:MQTT]: Client disconnected - clientId: undefined, clean: true
+[MQTT-Broker-Interop-Plugin:MQTT]: Client disconnected - clientId: undefined, persistent: false
+[
