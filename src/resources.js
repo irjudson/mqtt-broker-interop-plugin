@@ -3,6 +3,10 @@
 
 import { SysTopics, metrics, topicRegistry } from './mqtt.js';
 
+// Access global server and logger
+const server = globalThis.server;
+const logger = server?.logger || console;
+
 // Create singleton instance of SysTopics
 const sysTopics = new SysTopics();
 

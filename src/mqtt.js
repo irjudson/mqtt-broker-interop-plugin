@@ -3,6 +3,10 @@
  * Provides standard MQTT broker statistics via $SYS topics
  */
 
+// Access global server and logger
+const server = globalThis.server;
+const logger = server?.logger || console;
+
 // Global topic registry to track all published topics
 export const topicRegistry = new Set();
 
