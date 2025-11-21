@@ -10,6 +10,7 @@ export async function handleApplication(scope) {
 	const server = scope.server;
 
 	logger.info('[MQTT-Broker-Interop-Plugin:Index]: Starting plugin initialization');
+	logger.debug(`[MQTT-Broker-Interop-Plugin:Index]: Scope keys: ${JSON.stringify(Object.keys(scope))}`);
 	logger.debug(`[MQTT-Broker-Interop-Plugin:Index]: Scope options: ${JSON.stringify(Object.keys(options))}`);
 
 	// Load and normalize configuration
@@ -37,8 +38,24 @@ export async function handleApplication(scope) {
 		logger.warn('[MQTT-Broker-Interop-Plugin:Index]: setupSysTopicsPublisher function not available');
 	}
 
+	// Register MQTT topic resources if resources Map is available
+	if (scope.resources) {
+		logger.info('[MQTT-Broker-Interop-Plugin:Index]: Registering MQTT topic resources');
+		const { SysTopicsResource, WildcardTopicsResource } = await import('./resources.js');
+
+		// Register $SYS topic handler
+		scope.resources.set('$SYS', { Resource: SysTopicsResource });
+		logger.info('[MQTT-Broker-Interop-Plugin:Index]: Registered $SYS topic resource');
+
+		// Register wildcard # handler
+		scope.resources.set('#', { Resource: WildcardTopicsResource });
+		logger.info('[MQTT-Broker-Interop-Plugin:Index]: Registered # wildcard resource');
+	} else {
+		logger.warn('[MQTT-Broker-Interop-Plugin:Index]: No resources Map available in scope for MQTT topic registration');
+	}
+
 	logger.info('[MQTT-Broker-Interop-Plugin:Index]: MQTT Broker Interop Plugin initialized successfully');
 }
 
 // Export resource classes for MQTT topic handling
-export { SysTopicsResource as $SYS, WildcardTopicsResource as Wildcard } from './resources.js';
+export { SysTopicsResource, WildcardTopicsResource } from './resources.js';
