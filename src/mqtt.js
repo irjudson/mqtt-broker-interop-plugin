@@ -497,6 +497,14 @@ export function getTableNameForTopic(topic) {
   return `mqtt_${sanitized}`;
 }
 
+/**
+ * Generate unique message ID for table storage
+ * @returns {string} - Unique ID (timestamp-random)
+ */
+export function generateMessageId() {
+  return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+}
+
 // ============================================================================
 // MQTT Event Monitoring Setup
 // ============================================================================
