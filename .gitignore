@@ -141,3 +141,6 @@ vite.config.ts.timestamp-*
 # Working documents
 docs/WORK_SUMMARY.md
 
+# Git worktrees
+.worktrees/
+
