@@ -5,8 +5,8 @@ pluginModule: ./src/index.js
 
 rest: true
 
-# graphqlSchema:
-#   files: 'schema/schema.graphql'
+graphqlSchema:
+  files: 'schema/schema.graphql'
 
 jsResource:
   files: 'src/resources.js'
