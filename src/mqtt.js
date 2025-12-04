@@ -10,6 +10,9 @@ const logger = server?.logger || console;
 // Global topic registry to track all published topics
 export const topicRegistry = new Set();
 
+// Table registry to track table metadata
+export const tableRegistry = new Map();
+
 /**
  * MqttMetrics - Tracks MQTT broker statistics
  * This is the primary extension point for adding new metrics
