@@ -467,6 +467,35 @@ export class SysTopics {
     return 'HarperDB 4.x';
   }
 }
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+/**
+ * Get table name for a topic based on hierarchy
+ * @param {string} topic - MQTT topic path
+ * @returns {string} - Table name (mqtt_<segment> or mqtt_messages)
+ */
+export function getTableNameForTopic(topic) {
+  if (!topic) {
+    return 'mqtt_messages';
+  }
+
+  // Extract first segment before '/'
+  const firstSegment = topic.split('/')[0];
+
+  // If no hierarchy (no slash) or empty first segment, use default table
+  if (!firstSegment || (firstSegment === topic && !topic.includes('/'))) {
+    return 'mqtt_messages';
+  }
+
+  // Sanitize: lowercase, replace invalid chars with underscore
+  const sanitized = firstSegment
+    .toLowerCase()
+    .replace(/[^a-z0-9_]/g, '_');
+
+  return `mqtt_${sanitized}`;
+}
 
 // ============================================================================
 // MQTT Event Monitoring Setup
