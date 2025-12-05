@@ -134,6 +134,10 @@ export class MqttMetrics {
     }
 
     this.clients.total = this.clients.connected + this.clients.disconnected;
+
+    // Upsert metrics to table
+    upsertSysMetric('$SYS/broker/clients/connected', this.clients.connected);
+    upsertSysMetric('$SYS/broker/clients/disconnected', this.clients.disconnected);
   }
 
   onPublishReceived(message, byteCount) {
