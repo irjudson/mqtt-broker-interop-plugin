@@ -261,8 +261,12 @@ export class WildcardTopicsResource {
 export const Wildcard = WildcardTopicsResource;
 
 /**
- * Dynamic Topics Resource - handles all non-$SYS MQTT topics
- * Creates tables dynamically for new topics and stores messages
+ * Dynamic Topics Resource - handles non-$SYS MQTT topics
+ * NOTE: This is intentionally NOT exported as $wildcard to allow HarperDB's
+ * native wildcard handling to work properly.
+ *
+ * Tables are created dynamically when messages are PUBLISHED, not when subscribed.
+ * Wildcard subscriptions (/#, /+) use HarperDB's built-in topic matching.
  */
 export class DynamicTopicsResource {
   /**
@@ -274,17 +278,22 @@ export class DynamicTopicsResource {
     const topic = request.path || request.url;
     logger.debug(`[MQTT-Broker-Interop-Plugin:Resources]: DynamicTopicsResource GET request - topic: ${topic}`);
 
+    // Don't handle wildcard requests - let HarperDB handle those natively
+    if (topic.includes('#') || topic.includes('+')) {
+      logger.debug(`[MQTT-Broker-Interop-Plugin:Resources]: Wildcard topic, deferring to HarperDB: ${topic}`);
+      return null;
+    }
+
     // Import helper functions
-    const { getTableNameForTopic, createTableForTopic } = await import('./mqtt.js');
+    const { getTableNameForTopic } = await import('./mqtt.js');
 
     // Get the table name for this topic
     const tableName = getTableNameForTopic(topic);
 
-    // Get or create the table
-    const table = await createTableForTopic(topic, tableName);
-
+    // Check if table exists (don't create on GET)
+    const table = globalThis.tables?.[tableName];
     if (!table) {
-      logger.warn(`[MQTT-Broker-Interop-Plugin:Resources]: Could not get/create table for topic: ${topic}`);
+      logger.debug(`[MQTT-Broker-Interop-Plugin:Resources]: Table '${tableName}' not found for topic: ${topic}`);
       return { topic, messages: [] };
     }
 
@@ -305,7 +314,7 @@ export class DynamicTopicsResource {
 
   /**
    * Subscribe to any MQTT topic
-   * Creates table dynamically if needed and streams updates
+   * For wildcard subscriptions, defer to HarperDB's native handling
    * @param {Object} request - Request object with path property
    * @returns {AsyncIterator} - Async iterator for topic updates
    */
@@ -313,22 +322,23 @@ export class DynamicTopicsResource {
     const topic = request.path || request.url;
     logger.info(`[MQTT-Broker-Interop-Plugin:Resources]: DynamicTopicsResource subscribe - topic: ${topic}`);
 
-    // Import helper functions
-    const { getTableNameForTopic, createTableForTopic } = await import('./mqtt.js');
-
-    // Get the table name for this topic
-    const tableName = getTableNameForTopic(topic);
-
-    // Get or create the table
-    const table = await createTableForTopic(topic, tableName);
-
-    if (!table) {
-      logger.error(`[MQTT-Broker-Interop-Plugin:Resources]: Could not get/create table for topic: ${topic}`);
-      yield { topic, error: 'Could not create table' };
+    // For wildcard subscriptions, defer to HarperDB's built-in wildcard handling
+    if (topic.includes('#') || topic.includes('+')) {
+      logger.info(`[MQTT-Broker-Interop-Plugin:Resources]: Wildcard subscription, deferring to HarperDB: ${topic}`);
+      // Don't yield anything - let HarperDB handle it
       return;
     }
 
-    logger.info(`[MQTT-Broker-Interop-Plugin:Resources]: Subscription active for topic: ${topic}, table: ${tableName}`);
+    // For concrete topics, check if table exists (will be created on first publish)
+    const { getTableNameForTopic } = await import('./mqtt.js');
+    const tableName = getTableNameForTopic(topic);
+    const table = globalThis.tables?.[tableName];
+
+    if (!table) {
+      logger.info(`[MQTT-Broker-Interop-Plugin:Resources]: Table not yet created for ${topic}, will be created on first publish`);
+    }
+
+    logger.info(`[MQTT-Broker-Interop-Plugin:Resources]: Subscription active for topic: ${topic}`);
 
     // Yield initial acknowledgment
     yield {
@@ -340,8 +350,6 @@ export class DynamicTopicsResource {
     // Keep subscription alive with periodic updates
     while (true) {
       await new Promise(resolve => setTimeout(resolve, 30000));
-
-      // Could yield latest messages here if needed
       yield {
         topic: topic,
         timestamp: new Date().toISOString(),
@@ -351,8 +359,8 @@ export class DynamicTopicsResource {
   }
 }
 
-// Export the dynamic topics resource with wildcard pattern to catch all topics
-export const $wildcard = DynamicTopicsResource;
+// DO NOT export as $wildcard - this would interfere with HarperDB's native wildcard handling
+// Tables are created dynamically when messages are published via the MQTT event handlers
 
 // Export a helper to get current metrics directly
 export function getMetrics() {
