@@ -23,44 +23,53 @@ export async function handleApplication(scope) {
 
   logger.info('[MQTT-Broker-Interop-Plugin:Index]: Initializing MQTT Broker Interop Plugin');
 
-  // Create $SYS metrics table
+  // Create $SYS metrics table using operations API
   try {
-    logger.info('[MQTT-Broker-Interop-Plugin:Index]: Creating mqtt_sys_metrics table');
+    logger.info('[MQTT-Broker-Interop-Plugin:Index]: Creating mqtt_sys_metrics table via operations API');
 
-    // Use tables API from scope to define the table
-    const database = scope.tables.mqtt_topics || (scope.tables.mqtt_topics = {});
-    const sysMetricsTable = database.mqtt_sys_metrics || (database.mqtt_sys_metrics = scope.tables.define({
-      name: 'mqtt_sys_metrics',
-      primaryKey: 'id'
-    }));
+    // Use operations API to create table
+    const response = await server.request({
+      operation: 'create_table',
+      database: 'mqtt_topics',
+      table: 'mqtt_sys_metrics',
+      primary_key: 'id'
+    });
 
     logger.info('[MQTT-Broker-Interop-Plugin:Index]: $SYS metrics table created successfully');
+    logger.debug(`[MQTT-Broker-Interop-Plugin:Index]: Create table response: ${JSON.stringify(response)}`);
 
-    // Pass table reference to mqtt module
+    // Get table reference and pass to mqtt module
     const { setSysMetricsTable } = await import('./mqtt.js');
-    setSysMetricsTable(sysMetricsTable);
+    const sysMetricsTable = server.tables?.mqtt_topics?.mqtt_sys_metrics;
+    if (sysMetricsTable) {
+      setSysMetricsTable(sysMetricsTable);
+    } else {
+      logger.warn('[MQTT-Broker-Interop-Plugin:Index]: Could not get table reference after creation');
+    }
   } catch (error) {
-    logger.error('[MQTT-Broker-Interop-Plugin:Index]: Failed to create $SYS metrics table:', error);
+    // Table might already exist, try to get reference anyway
+    logger.info(`[MQTT-Broker-Interop-Plugin:Index]: Table creation result: ${error.message}`);
+    try {
+      const { setSysMetricsTable } = await import('./mqtt.js');
+      const sysMetricsTable = server.tables?.mqtt_topics?.mqtt_sys_metrics;
+      if (sysMetricsTable) {
+        setSysMetricsTable(sysMetricsTable);
+        logger.info('[MQTT-Broker-Interop-Plugin:Index]: Using existing mqtt_sys_metrics table');
+      }
+    } catch (e) {
+      logger.error('[MQTT-Broker-Interop-Plugin:Index]: Failed to get $SYS metrics table:', e);
+    }
   }
 
-  // Register $SYS topics resource
-  if (scope.resources) {
-    logger.info('[MQTT-Broker-Interop-Plugin:Index]: Registering $SYS topics resource');
-    const { SysTopicsResource } = await import('./resources.js');
-    scope.resources.set('$SYS', SysTopicsResource);
-    logger.info('[MQTT-Broker-Interop-Plugin:Index]: Registered $SYS topic resource');
-  } else {
-    logger.warn('[MQTT-Broker-Interop-Plugin:Index]: No resources Map available for $SYS registration');
-  }
-
-  // Note: Resources are also automatically loaded from jsResource config
-  logger.info('[MQTT-Broker-Interop-Plugin:Index]: Resources configured (loaded from jsResource config)');
+  // Note: $SYS topics resource is automatically loaded from jsResource config in config.yaml
+  // Do NOT register it manually here to avoid "Conflicting paths" error
+  logger.info('[MQTT-Broker-Interop-Plugin:Index]: Resources will be loaded from jsResource config (src/resources.js)');
 
   // Setup MQTT event monitoring (on worker threads)
   if (server?.mqtt?.events) {
     logger.info('[MQTT-Broker-Interop-Plugin:Index]: MQTT events available, setting up event monitoring on worker thread');
     const { setupMqttMonitoring } = await import('./mqtt.js');
-    setupMqttMonitoring(server, scope, logger, sysInterval);
+    setupMqttMonitoring(server, logger, sysInterval);
   } else {
     logger.debug('[MQTT-Broker-Interop-Plugin:Index]: MQTT events not available on this thread');
   }
