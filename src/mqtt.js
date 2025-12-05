@@ -118,6 +118,11 @@ export class MqttMetrics {
       this.clients.maximum = this.clients.connected;
       logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: New maximum clients reached: ${this.clients.maximum}`);
     }
+
+    // Upsert metrics to table
+    upsertSysMetric('$SYS/broker/clients/connected', this.clients.connected);
+    upsertSysMetric('$SYS/broker/clients/total', this.clients.total);
+    upsertSysMetric('$SYS/broker/clients/maximum', this.clients.maximum);
   }
 
   onDisconnect(clientId, persistent) {
