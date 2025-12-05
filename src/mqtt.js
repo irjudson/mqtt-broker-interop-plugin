@@ -679,6 +679,21 @@ export function writeMessageToTable(tableName, message) {
   }
 }
 
+/**
+ * Update retained message status for a table
+ * @param {string} tableName - Table name
+ * @param {boolean} hasRetained - Whether table has retained messages
+ */
+export function updateRetainedStatus(tableName, hasRetained) {
+  const tableEntry = tableRegistry.get(tableName);
+  if (tableEntry) {
+    tableEntry.hasRetained = hasRetained;
+    logger.trace(`[MQTT-Broker-Interop-Plugin:MQTT]: Updated retained status for table '${tableName}': ${hasRetained}`);
+  } else {
+    logger.debug(`[MQTT-Broker-Interop-Plugin:MQTT]: Cannot update retained status - table '${tableName}' not in registry`);
+  }
+}
+
 // ============================================================================
 // MQTT Event Monitoring Setup
 // ============================================================================

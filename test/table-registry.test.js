@@ -56,4 +56,44 @@ describe('Table Registry', () => {
       assert.equal(tableRegistry.get('mqtt_sensors').subscriptionCount, 1);
     });
   });
+
+  describe('updateRetainedStatus', () => {
+    it('updates hasRetained flag for existing table', async () => {
+      const { updateRetainedStatus } = await import('../src/mqtt.js');
+
+      tableRegistry.set('mqtt_home', {
+        tableName: 'mqtt_home',
+        subscriptionCount: 1,
+        hasRetained: false
+      });
+
+      updateRetainedStatus('mqtt_home', true);
+
+      const entry = tableRegistry.get('mqtt_home');
+      assert.equal(entry.hasRetained, true);
+    });
+
+    it('handles non-existent table gracefully', async () => {
+      const { updateRetainedStatus } = await import('../src/mqtt.js');
+
+      // Should not throw
+      updateRetainedStatus('mqtt_nonexistent', true);
+    });
+
+    it('can toggle retained status', async () => {
+      const { updateRetainedStatus } = await import('../src/mqtt.js');
+
+      tableRegistry.set('mqtt_home', {
+        tableName: 'mqtt_home',
+        subscriptionCount: 1,
+        hasRetained: false
+      });
+
+      updateRetainedStatus('mqtt_home', true);
+      assert.equal(tableRegistry.get('mqtt_home').hasRetained, true);
+
+      updateRetainedStatus('mqtt_home', false);
+      assert.equal(tableRegistry.get('mqtt_home').hasRetained, false);
+    });
+  });
 });
