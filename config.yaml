@@ -8,8 +8,10 @@ rest: true
 graphqlSchema:
   files: 'schema/schema.graphql'
 
-jsResource:
-  files: 'src/resources.js'
+# jsResource:
+#   files: 'src/resources.js'
+# Disabled - jsResource is for REST/GraphQL, not MQTT
+# MQTT topics are handled via @export in schema.graphql
 
 # MQTT Configuration
 mqtt:
@@ -18,7 +20,7 @@ mqtt:
     securePort: 8883 # for TLS
   webSocket: true # will also enable WS support through the default HTTP interface/port
   mTLS: false
-  requireAuthentication: falst
+  requireAuthentication: false
   # Interval in seconds for publishing $SYS topic updates
   sys_interval: 10
 
