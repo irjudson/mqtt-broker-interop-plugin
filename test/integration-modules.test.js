@@ -2,15 +2,13 @@
  * Integration tests for modularized MQTT components
  */
 
-import { test, describe, beforeEach, afterEach } from 'node:test';
+import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert';
 
 // Import all modules
 const modules = '../src/lib/mqtt.js';
 
 describe('Module Integration Tests', () => {
-  let metrics, sysTopics, publisher, monitor;
-
   beforeEach(async () => {
     // Note: ES modules are cached differently than CommonJS
     // For testing, we rely on singleton patterns in the modules

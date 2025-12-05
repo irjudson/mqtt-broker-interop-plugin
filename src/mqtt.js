@@ -4,7 +4,7 @@
  */
 
 // Access global server and logger
-const server = globalThis.server;
+const {server} = globalThis;
 const logger = server?.logger || console;
 
 // Global topic registry to track all published topics
@@ -108,7 +108,7 @@ export class MqttMetrics {
     }
   }
 
-  onConnecting(socket) {
+  onConnecting(_socket) {
     logger.debug('[MQTT-Broker-Interop-Plugin:MQTT]: Client connecting');
   }
 
@@ -303,8 +303,6 @@ export class MqttMetrics {
       const fifteenMinSamples = samples.filter(s => s.time > fifteenMinAgo);
 
       // Calculate averages
-      const metricKey = metric.replace('messages', 'messages').replace('bytes', 'bytes');
-
       if (oneMinSamples.length > 0) {
         const delta = oneMinSamples[oneMinSamples.length - 1].value - oneMinSamples[0].value;
         this.load[metric].oneMin = delta / (oneMinSamples.length > 1 ? 1 : 1);
@@ -647,7 +645,7 @@ export function createTableForTopic(topic, tableName) {
  */
 export function writeMessageToTable(tableName, message) {
   if (!harperServer) {
-    logger.error(`[MQTT-Broker-Interop-Plugin:MQTT]: Cannot write message - server not initialized`);
+    logger.error('[MQTT-Broker-Interop-Plugin:MQTT]: Cannot write message - server not initialized');
     return;
   }
 
@@ -959,7 +957,7 @@ export function setupSysTopicsPublisher(server, _logger, sysInterval, sysTable =
 /**
  * Initialize the table used for publishing MQTT messages
  */
-async function initializePublishTable(server) {
+function initializePublishTable(server) {
   try {
     logger.debug('[MQTT-Broker-Interop-Plugin:MQTT]: Initializing MQTT publish table');
     // In HarperDB, we can publish to topics through the MQTT system directly
@@ -992,7 +990,7 @@ function startSysPublisher(intervalSeconds) {
     publishAllSysTopics();
   }, intervalSeconds * 1000);
 
-  logger.debug(`[MQTT-Broker-Interop-Plugin:MQTT]: $SYS publisher interval timer established`);
+  logger.debug('[MQTT-Broker-Interop-Plugin:MQTT]: $SYS publisher interval timer established');
 }
 
 function stopSysPublisher() {

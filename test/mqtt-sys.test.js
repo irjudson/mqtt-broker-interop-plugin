@@ -6,7 +6,7 @@
 // IMPORTANT: Setup logger FIRST before importing any modules that use it
 import './helpers/setup-logger.js';
 
-import { describe, it, beforeEach, after } from 'node:test';
+import { describe, it, after } from 'node:test';
 import assert from 'node:assert/strict';
 
 const mqttjs = '../src/mqtt.js';

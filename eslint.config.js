@@ -22,6 +22,11 @@ export default [
         exports: 'readonly',
         module: 'readonly',
         require: 'readonly',
+        global: 'readonly',
+        setInterval: 'readonly',
+        clearInterval: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
         // Test globals
         describe: 'readonly',
         it: 'readonly',

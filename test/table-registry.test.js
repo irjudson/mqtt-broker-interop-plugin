@@ -13,8 +13,8 @@ describe('Table Registry', () => {
 
   beforeEach(async () => {
     // Import fresh module for each test
-    const mqtt = await import('../src/mqtt.js');
-    tableRegistry = mqtt.tableRegistry;
+    const { tableRegistry: registry } = await import('../src/mqtt.js');
+    tableRegistry = registry;
     tableRegistry.clear(); // Reset for each test
   });
 

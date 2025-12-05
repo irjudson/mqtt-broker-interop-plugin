@@ -7,7 +7,7 @@ import './helpers/setup-logger.js';
 
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert';
-import { topicRegistry, metrics } from '../src/mqtt.js';
+import { topicRegistry } from '../src/mqtt.js';
 import { SysTopicsResource, WildcardTopicsResource } from '../src/resources.js';
 
 describe('Wildcard Topics', () => {

@@ -133,15 +133,15 @@ class SimpleTestClient {
     const type = (data[0] >> 4) & 0x0F;
 
     switch (type) {
-      case 0x03: // PUBLISH
-        this.handlePublish(data);
-        break;
-      case 0x09: // SUBACK
-        console.log('✅ Subscription acknowledged');
-        break;
-      case 0x0D: // PINGRESP
-        console.log('Ping response received');
-        break;
+    case 0x03: // PUBLISH
+      this.handlePublish(data);
+      break;
+    case 0x09: // SUBACK
+      console.log('✅ Subscription acknowledged');
+      break;
+    case 0x0D: // PINGRESP
+      console.log('Ping response received');
+      break;
     }
   }
 

@@ -20,7 +20,7 @@ console.log('');
 
 // Connect to MQTT broker
 const client = mqtt.connect(MQTT_BROKER_URL, {
-  clientId: 'sys-test-' + Date.now(),
+  clientId: `sys-test-${  Date.now()}`,
   clean: true
 });
 
