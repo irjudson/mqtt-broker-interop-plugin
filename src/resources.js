@@ -359,8 +359,47 @@ export class DynamicTopicsResource {
   }
 }
 
-// DO NOT export as $wildcard - this would interfere with HarperDB's native wildcard handling
-// Tables are created dynamically when messages are published via the MQTT event handlers
+/**
+ * Wildcard catch-all resource to accept all topic subscriptions
+ * This prevents 404 errors while allowing HarperDB's native wildcard
+ * matching to find the appropriate tables
+ */
+export class AllTopicsResource {
+  async get(request) {
+    const topic = request.path || request.url;
+    logger.trace(`[MQTT-Broker-Interop-Plugin:Resources]: AllTopicsResource GET - ${topic}`);
+
+    // Return empty - let HarperDB's native topic matching find tables
+    return { topic, status: 'ok' };
+  }
+
+  async *subscribe(request) {
+    const topic = request.path || request.url;
+    logger.info(`[MQTT-Broker-Interop-Plugin:Resources]: AllTopicsResource subscribe - ${topic}`);
+
+    // Accept the subscription - HarperDB will route messages from matching tables
+    yield {
+      topic: topic,
+      timestamp: new Date().toISOString(),
+      status: 'subscribed'
+    };
+
+    // Keep alive
+    while (true) {
+      await new Promise(resolve => setTimeout(resolve, 60000));
+      yield {
+        topic: topic,
+        timestamp: new Date().toISOString(),
+        status: 'alive'
+      };
+    }
+  }
+}
+
+// Export as $wildcard to accept ALL topic subscriptions
+// Tables are created when messages are published, and HarperDB's
+// native wildcard matching routes messages to subscribers
+export const $wildcard = AllTopicsResource;
 
 // Export a helper to get current metrics directly
 export function getMetrics() {
