@@ -509,6 +509,30 @@ export function generateMessageId() {
 }
 
 /**
+ * Upsert a $SYS metric to the table
+ * @param {string} topic - $SYS topic path
+ * @param {any} value - Metric value
+ */
+export function upsertSysMetric(topic, value) {
+  if (!sysMetricsTable) {
+    logger.trace(`[MQTT-Broker-Interop-Plugin:MQTT]: Cannot upsert metric '${topic}' - table not initialized`);
+    return;
+  }
+
+  try {
+    sysMetricsTable.put({
+      id: topic, // Use topic as PK for upsert
+      topic: topic,
+      value: value,
+      timestamp: new Date()
+    });
+    logger.trace(`[MQTT-Broker-Interop-Plugin:MQTT]: Upserted $SYS metric - ${topic} = ${value}`);
+  } catch (error) {
+    logger.error(`[MQTT-Broker-Interop-Plugin:MQTT]: Failed to upsert $SYS metric '${topic}':`, error);
+  }
+}
+
+/**
  * Set the $SYS metrics table reference
  * @param {Object} table - HarperDB table instance
  */
