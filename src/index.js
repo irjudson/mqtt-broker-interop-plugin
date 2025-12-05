@@ -26,11 +26,14 @@ export async function handleApplication(scope) {
   // Create $SYS metrics table
   try {
     logger.info('[MQTT-Broker-Interop-Plugin:Index]: Creating mqtt_sys_metrics table');
-    const sysMetricsTable = server.ensureTable({
-      database: 'mqtt_topics',
-      table: 'mqtt_sys_metrics',
+
+    // Use tables API from scope to define the table
+    const database = scope.tables.mqtt_topics || (scope.tables.mqtt_topics = {});
+    const sysMetricsTable = database.mqtt_sys_metrics || (database.mqtt_sys_metrics = scope.tables.define({
+      name: 'mqtt_sys_metrics',
       primaryKey: 'id'
-    });
+    }));
+
     logger.info('[MQTT-Broker-Interop-Plugin:Index]: $SYS metrics table created successfully');
 
     // Pass table reference to mqtt module
@@ -57,7 +60,7 @@ export async function handleApplication(scope) {
   if (server?.mqtt?.events) {
     logger.info('[MQTT-Broker-Interop-Plugin:Index]: MQTT events available, setting up event monitoring on worker thread');
     const { setupMqttMonitoring } = await import('./mqtt.js');
-    setupMqttMonitoring(server, logger, sysInterval);
+    setupMqttMonitoring(server, scope, logger, sysInterval);
   } else {
     logger.debug('[MQTT-Broker-Interop-Plugin:Index]: MQTT events not available on this thread');
   }

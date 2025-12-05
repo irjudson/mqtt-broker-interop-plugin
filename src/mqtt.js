@@ -328,6 +328,7 @@ export const metrics = new MqttMetrics();
 // HarperDB Server and MQTT Integration
 // ============================================================================
 let harperServer = null;
+let harperScope = null;
 let mqttPublishTable = null;
 
 /**
@@ -615,20 +616,21 @@ export function setSysMetricsTable(table) {
  * @param {string} tableName - Sanitized table name
  */
 export function createTableForTopic(topic, tableName) {
-  if (!harperServer) {
-    logger.error(`[MQTT-Broker-Interop-Plugin:MQTT]: Cannot create table '${tableName}' - server not initialized`);
+  if (!harperScope) {
+    logger.error(`[MQTT-Broker-Interop-Plugin:MQTT]: Cannot create table '${tableName}' - scope not initialized`);
     return;
   }
 
   try {
     logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: Creating table '${tableName}' for topic '${topic}'`);
 
-    const table = harperServer.ensureTable({
-      database: 'mqtt_topics',
-      table: tableName,
+    // Use scope.tables API to define the table
+    const database = harperScope.tables.mqtt_topics || (harperScope.tables.mqtt_topics = {});
+    const table = database[tableName] || (database[tableName] = harperScope.tables.define({
+      name: tableName,
       primaryKey: 'id'
       // No schema - flexible typing for payload and other fields
-    });
+    }));
 
     logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: Table '${tableName}' created successfully`);
     return table;
@@ -644,8 +646,8 @@ export function createTableForTopic(topic, tableName) {
  * @param {Object} message - Message data (topic, payload, qos, retain, client_id)
  */
 export function writeMessageToTable(tableName, message) {
-  if (!harperServer) {
-    logger.error('[MQTT-Broker-Interop-Plugin:MQTT]: Cannot write message - server not initialized');
+  if (!harperScope) {
+    logger.error('[MQTT-Broker-Interop-Plugin:MQTT]: Cannot write message - scope not initialized');
     return;
   }
 
@@ -660,7 +662,15 @@ export function writeMessageToTable(tableName, message) {
       tableRegistry.set(tableName, tableEntry);
     }
 
-    const table = harperServer.getTable('mqtt_topics', tableName);
+    // Get table reference from scope
+    const database = harperScope.tables.mqtt_topics;
+    const table = database?.[tableName];
+
+    if (!table) {
+      logger.error(`[MQTT-Broker-Interop-Plugin:MQTT]: Table '${tableName}' not found in mqtt_topics database`);
+      return;
+    }
+
     table.put({
       id: generateMessageId(),
       topic: message.topic,
@@ -697,23 +707,27 @@ export function updateRetainedStatus(tableName, hasRetained) {
  * @param {string} tableName - Table name to cleanup
  */
 export function cleanupTable(tableName) {
-  if (!harperServer) {
-    logger.error(`[MQTT-Broker-Interop-Plugin:MQTT]: Cannot cleanup table '${tableName}' - server not initialized`);
+  if (!harperScope) {
+    logger.error(`[MQTT-Broker-Interop-Plugin:MQTT]: Cannot cleanup table '${tableName}' - scope not initialized`);
     return;
   }
 
   logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: Cleaning up unused table: ${tableName}`);
 
   try {
-    // Drop the table
-    harperServer.dropTable('mqtt_topics', tableName);
+    // Remove table from scope.tables
+    const database = harperScope.tables.mqtt_topics;
+    if (database && database[tableName]) {
+      delete database[tableName];
+      logger.debug(`[MQTT-Broker-Interop-Plugin:MQTT]: Removed table '${tableName}' from scope.tables`);
+    }
 
     // Remove from registry
     tableRegistry.delete(tableName);
 
-    logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: Table '${tableName}' dropped successfully`);
+    logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: Table '${tableName}' cleaned up successfully`);
   } catch (error) {
-    logger.error(`[MQTT-Broker-Interop-Plugin:MQTT]: Failed to drop table '${tableName}':`, error);
+    logger.error(`[MQTT-Broker-Interop-Plugin:MQTT]: Failed to cleanup table '${tableName}':`, error);
   }
 }
 
@@ -724,10 +738,11 @@ export function cleanupTable(tableName) {
 /**
  * Setup MQTT event monitoring on worker threads
  * @param {Object} server - HarperDB server instance
+ * @param {Object} scope - HarperDB scope instance
  * @param {Object} logger - Logger instance
  * @param {number} sysInterval - Update interval in seconds
  */
-export function setupMqttMonitoring(server, _logger, _sysInterval) {
+export function setupMqttMonitoring(server, scope, _logger, _sysInterval) {
   logger.info('[MQTT-Broker-Interop-Plugin:MQTT]: Setting up MQTT monitoring');
   if (!server?.mqtt?.events) {
     logger.warn('[MQTT-Broker-Interop-Plugin:MQTT]: MQTT events not available on this thread');
@@ -735,6 +750,7 @@ export function setupMqttMonitoring(server, _logger, _sysInterval) {
   }
 
   harperServer = server;
+  harperScope = scope;
   const mqttEvents = server.mqtt.events;
   logger.debug('[MQTT-Broker-Interop-Plugin:MQTT]: MQTT events object obtained');
 
