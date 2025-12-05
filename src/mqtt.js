@@ -157,6 +157,11 @@ export class MqttMetrics {
     this.messages.sent++;
     this.messages.publishSent++;
     this.bytes.sent += byteCount;
+
+    // Upsert metrics to table
+    upsertSysMetric('$SYS/broker/messages/sent', this.messages.sent);
+    upsertSysMetric('$SYS/broker/publish/messages/sent', this.messages.publishSent);
+    upsertSysMetric('$SYS/broker/bytes/sent', this.bytes.sent);
   }
 
   onSubscribe(clientId, topic) {
