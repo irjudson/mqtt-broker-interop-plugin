@@ -42,6 +42,28 @@ export async function handleApplication(scope) {
   // Do NOT register it manually here to avoid "Conflicting paths" error
   logger.info('[MQTT-Broker-Interop-Plugin:Index]: Resources will be loaded from jsResource config (src/resources.js)');
 
+  // Register a catch-all MQTT topic handler if possible
+  if (server?.mqtt) {
+    logger.info('[MQTT-Broker-Interop-Plugin:Index]: Attempting to register catch-all MQTT topic handler');
+    try {
+      // Try to register a wildcard handler for all topics
+      if (server.mqtt.addTopicHandler) {
+        server.mqtt.addTopicHandler('#', async (topic, message) => {
+          logger.debug(`[MQTT-Broker-Interop-Plugin:Index]: Wildcard handler - topic: ${topic}`);
+          return { topic, status: 'accepted' };
+        });
+        logger.info('[MQTT-Broker-Interop-Plugin:Index]: Registered wildcard topic handler');
+      } else if (server.mqtt.registerTopic) {
+        server.mqtt.registerTopic('#');
+        logger.info('[MQTT-Broker-Interop-Plugin:Index]: Registered wildcard topic');
+      } else {
+        logger.warn('[MQTT-Broker-Interop-Plugin:Index]: No API found to register wildcard topics');
+      }
+    } catch (error) {
+      logger.error('[MQTT-Broker-Interop-Plugin:Index]: Failed to register wildcard handler:', error);
+    }
+  }
+
   // Setup MQTT event monitoring (on worker threads)
   if (server?.mqtt?.events) {
     logger.info('[MQTT-Broker-Interop-Plugin:Index]: MQTT events available, setting up event monitoring on worker thread');
