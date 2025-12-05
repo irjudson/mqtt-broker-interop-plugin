@@ -610,42 +610,19 @@ export function setSysMetricsTable(table) {
 }
 
 /**
- * Create a table for a topic using operations API
+ * Create/get table for a topic
  * @param {string} topic - MQTT topic path
  * @param {string} tableName - Sanitized table name
  */
 export async function createTableForTopic(topic, tableName) {
-  if (!harperServer) {
-    logger.error(`[MQTT-Broker-Interop-Plugin:MQTT]: Cannot create table '${tableName}' - server not initialized`);
-    return null;
+  // Check if table exists in global tables
+  const table = globalThis.tables?.[tableName];
+  if (table) {
+    return table;
   }
 
-  try {
-    logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: Creating table '${tableName}' for topic '${topic}'`);
-
-    // Use operations API to create table
-    await harperServer.request({
-      operation: 'create_table',
-      database: 'mqtt_topics',
-      table: tableName,
-      primary_key: 'id'
-    });
-
-    logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: Table '${tableName}' created successfully`);
-
-    // Get table reference
-    const table = harperServer.tables?.mqtt_topics?.[tableName];
-    return table || null;
-  } catch (error) {
-    // Table might already exist
-    if (error.message?.includes('already exists') || error.message?.includes('Table with name')) {
-      logger.debug(`[MQTT-Broker-Interop-Plugin:MQTT]: Table '${tableName}' already exists`);
-      const table = harperServer.tables?.mqtt_topics?.[tableName];
-      return table || null;
-    }
-    logger.error(`[MQTT-Broker-Interop-Plugin:MQTT]: Failed to create table '${tableName}' for topic '${topic}':`, error);
-    return null;
-  }
+  logger.debug(`[MQTT-Broker-Interop-Plugin:MQTT]: Table '${tableName}' not found for topic '${topic}'`);
+  return null;
 }
 
 /**
@@ -654,27 +631,19 @@ export async function createTableForTopic(topic, tableName) {
  * @param {Object} message - Message data (topic, payload, qos, retain, client_id)
  */
 export async function writeMessageToTable(tableName, message) {
-  if (!harperServer) {
-    logger.error('[MQTT-Broker-Interop-Plugin:MQTT]: Cannot write message - server not initialized');
-    return;
-  }
-
   try {
-    // Get or create table
+    // Get or create table entry in registry
     let tableEntry = tableRegistry.get(tableName);
     if (!tableEntry) {
-      // Table doesn't exist yet (published before subscribe)
-      logger.debug(`[MQTT-Broker-Interop-Plugin:MQTT]: Table '${tableName}' not in registry, creating on publish`);
       await createTableForTopic(message.topic, tableName);
       tableEntry = { tableName, subscriptionCount: 0, hasRetained: false };
       tableRegistry.set(tableName, tableEntry);
     }
 
-    // Get table reference from server
-    const table = harperServer.tables?.mqtt_topics?.[tableName];
-
+    // Get table from global tables
+    const table = globalThis.tables?.[tableName];
     if (!table) {
-      logger.error(`[MQTT-Broker-Interop-Plugin:MQTT]: Table '${tableName}' not found in mqtt_topics database`);
+      logger.trace(`[MQTT-Broker-Interop-Plugin:MQTT]: No table '${tableName}' for topic '${message.topic}'`);
       return;
     }
 
@@ -688,9 +657,9 @@ export async function writeMessageToTable(tableName, message) {
       client_id: message.client_id
     });
 
-    logger.trace(`[MQTT-Broker-Interop-Plugin:MQTT]: Message written to table '${tableName}' for topic '${message.topic}'`);
+    logger.trace(`[MQTT-Broker-Interop-Plugin:MQTT]: Wrote to table '${tableName}'`);
   } catch (error) {
-    logger.error(`[MQTT-Broker-Interop-Plugin:MQTT]: Failed to write message to table '${tableName}':`, error);
+    logger.error(`[MQTT-Broker-Interop-Plugin:MQTT]: Write error: ${error.message}`);
   }
 }
 
@@ -710,32 +679,12 @@ export function updateRetainedStatus(tableName, hasRetained) {
 }
 
 /**
- * Cleanup (drop) a table that has no subscribers and no retained messages
+ * Cleanup table tracking when no longer needed
  * @param {string} tableName - Table name to cleanup
  */
 export async function cleanupTable(tableName) {
-  if (!harperServer) {
-    logger.error(`[MQTT-Broker-Interop-Plugin:MQTT]: Cannot cleanup table '${tableName}' - server not initialized`);
-    return;
-  }
-
-  logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: Cleaning up unused table: ${tableName}`);
-
-  try {
-    // Use operations API to drop table
-    await harperServer.request({
-      operation: 'drop_table',
-      database: 'mqtt_topics',
-      table: tableName
-    });
-
-    // Remove from registry
-    tableRegistry.delete(tableName);
-
-    logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: Table '${tableName}' dropped successfully`);
-  } catch (error) {
-    logger.error(`[MQTT-Broker-Interop-Plugin:MQTT]: Failed to drop table '${tableName}':`, error);
-  }
+  logger.debug(`[MQTT-Broker-Interop-Plugin:MQTT]: Cleaning up tracking for table '${tableName}'`);
+  tableRegistry.delete(tableName);
 }
 
 // ============================================================================

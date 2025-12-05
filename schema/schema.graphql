@@ -1,3 +1,16 @@
 type SYS @table(database: "test") @export(name: "$SYS") {
     id: Int @primaryKey
 }
+
+# MQTT Topics Database Schema
+
+# $SYS Metrics Table - stores broker statistics for MQTT $SYS topics
+type mqtt_sys_metrics @table {
+  id: String @primaryKey
+  topic: String @indexed
+  value: String
+  timestamp: String
+}
+
+# Note: Additional topic tables (mqtt_home, mqtt_sensors, etc.) are created dynamically
+# by the plugin when new MQTT topics are subscribed to.

@@ -23,42 +23,19 @@ export async function handleApplication(scope) {
 
   logger.info('[MQTT-Broker-Interop-Plugin:Index]: Initializing MQTT Broker Interop Plugin');
 
-  // Create $SYS metrics table using operations API
+  // Access $SYS metrics table from global tables object
   try {
-    logger.info('[MQTT-Broker-Interop-Plugin:Index]: Creating mqtt_sys_metrics table via operations API');
+    const { mqtt_sys_metrics } = globalThis.tables || {};
 
-    // Use operations API to create table
-    const response = await server.request({
-      operation: 'create_table',
-      database: 'mqtt_topics',
-      table: 'mqtt_sys_metrics',
-      primary_key: 'id'
-    });
-
-    logger.info('[MQTT-Broker-Interop-Plugin:Index]: $SYS metrics table created successfully');
-    logger.debug(`[MQTT-Broker-Interop-Plugin:Index]: Create table response: ${JSON.stringify(response)}`);
-
-    // Get table reference and pass to mqtt module
-    const { setSysMetricsTable } = await import('./mqtt.js');
-    const sysMetricsTable = server.tables?.mqtt_topics?.mqtt_sys_metrics;
-    if (sysMetricsTable) {
-      setSysMetricsTable(sysMetricsTable);
+    if (mqtt_sys_metrics) {
+      const { setSysMetricsTable } = await import('./mqtt.js');
+      setSysMetricsTable(mqtt_sys_metrics);
+      logger.info('[MQTT-Broker-Interop-Plugin:Index]: $SYS metrics table initialized');
     } else {
-      logger.warn('[MQTT-Broker-Interop-Plugin:Index]: Could not get table reference after creation');
+      logger.info('[MQTT-Broker-Interop-Plugin:Index]: $SYS metrics table not found (metrics will be in-memory only)');
     }
   } catch (error) {
-    // Table might already exist, try to get reference anyway
-    logger.info(`[MQTT-Broker-Interop-Plugin:Index]: Table creation result: ${error.message}`);
-    try {
-      const { setSysMetricsTable } = await import('./mqtt.js');
-      const sysMetricsTable = server.tables?.mqtt_topics?.mqtt_sys_metrics;
-      if (sysMetricsTable) {
-        setSysMetricsTable(sysMetricsTable);
-        logger.info('[MQTT-Broker-Interop-Plugin:Index]: Using existing mqtt_sys_metrics table');
-      }
-    } catch (e) {
-      logger.error('[MQTT-Broker-Interop-Plugin:Index]: Failed to get $SYS metrics table:', e);
-    }
+    logger.error('[MQTT-Broker-Interop-Plugin:Index]: Error accessing tables:', error);
   }
 
   // Note: $SYS topics resource is automatically loaded from jsResource config in config.yaml
