@@ -788,13 +788,48 @@ export function setupMqttMonitoring(server, _logger, _sysInterval) {
       subscriptions.forEach(sub => {
         const topic = typeof sub === 'string' ? sub : sub?.topic;
         logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: Subscription - clientId: ${clientId}, topic: ${topic}`);
-        metrics.onSubscribe(clientId, topic);
 
-        // Check if it's a $SYS topic subscription
-        if (topic && (topic.startsWith('$SYS/') || topic === '$SYS/#')) {
-          logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: $SYS topic subscription detected - clientId: ${clientId}, topic: ${topic}`);
-          onSysTopicSubscribe(clientId, topic);
+        // Skip empty topics
+        if (!topic) {
+          logger.debug('[MQTT-Broker-Interop-Plugin:MQTT]: Skipping empty topic subscription');
+          return;
         }
+
+        // Handle $SYS topics - don't create tables
+        if (topic.startsWith('$SYS/') || topic === '$SYS/#') {
+          logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: $SYS topic subscription detected - clientId: ${clientId}, topic: ${topic}`);
+          metrics.onSubscribe(clientId, topic);
+          onSysTopicSubscribe(clientId, topic);
+          return;
+        }
+
+        // Skip wildcards - they don't create tables
+        if (topic.includes('#') || topic.includes('+')) {
+          logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: Wildcard subscription - topic: ${topic}`);
+          metrics.onSubscribe(clientId, topic);
+          return;
+        }
+
+        // Get table name for this topic
+        const tableName = getTableNameForTopic(topic);
+
+        // Create table if doesn't exist (check registry first)
+        if (!tableRegistry.has(tableName)) {
+          logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: Creating new table for subscription - table: ${tableName}, topic: ${topic}`);
+          createTableForTopic(topic, tableName);
+          tableRegistry.set(tableName, {
+            tableName,
+            subscriptionCount: 0,
+            hasRetained: false
+          });
+        }
+
+        // Increment subscription count
+        const entry = tableRegistry.get(tableName);
+        entry.subscriptionCount++;
+        logger.debug(`[MQTT-Broker-Interop-Plugin:MQTT]: Incremented subscription count for table '${tableName}': ${entry.subscriptionCount}`);
+
+        metrics.onSubscribe(clientId, topic);
       });
     }
   });
