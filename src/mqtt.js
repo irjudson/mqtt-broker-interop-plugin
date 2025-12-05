@@ -130,7 +130,9 @@ export class MqttMetrics {
 
   onDisconnect(clientId, persistent) {
     logger.debug(`[MQTT-Broker-Interop-Plugin:MQTT]: Client disconnected - clientId: ${clientId}, persistent: ${persistent}`);
-    this.clients.connected--;
+    if (this.clients.connected > 0) {
+      this.clients.connected--;
+    }
 
     if (persistent) {
       this.clients.disconnected++;
