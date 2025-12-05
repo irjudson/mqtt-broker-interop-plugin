@@ -611,6 +611,35 @@ export function setSysMetricsTable(table) {
   logger.info('[MQTT-Broker-Interop-Plugin:MQTT]: $SYS metrics table reference set');
 }
 
+/**
+ * Create a table for a topic
+ * @param {string} topic - MQTT topic path
+ * @param {string} tableName - Sanitized table name
+ */
+export function createTableForTopic(topic, tableName) {
+  if (!harperServer) {
+    logger.error(`[MQTT-Broker-Interop-Plugin:MQTT]: Cannot create table '${tableName}' - server not initialized`);
+    return;
+  }
+
+  try {
+    logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: Creating table '${tableName}' for topic '${topic}'`);
+
+    const table = harperServer.ensureTable({
+      database: 'mqtt_topics',
+      table: tableName,
+      primaryKey: 'id'
+      // No schema - flexible typing for payload and other fields
+    });
+
+    logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: Table '${tableName}' created successfully`);
+    return table;
+  } catch (error) {
+    logger.error(`[MQTT-Broker-Interop-Plugin:MQTT]: Failed to create table '${tableName}' for topic '${topic}':`, error);
+    return null;
+  }
+}
+
 // ============================================================================
 // MQTT Event Monitoring Setup
 // ============================================================================
