@@ -1,7 +1,8 @@
 # MQTT Topics Database Schema
 
 # $SYS Metrics Table - stores broker statistics for MQTT $SYS topics
-type mqtt_sys_metrics @table {
+# Exported as MQTT topics so clients can subscribe to $SYS/broker/*
+type mqtt_sys_metrics @table @export(name: "$SYS") {
   id: String @primaryKey
   topic: String @indexed
   value: String
