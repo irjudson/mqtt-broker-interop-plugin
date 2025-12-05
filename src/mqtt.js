@@ -167,21 +167,33 @@ export class MqttMetrics {
   onSubscribe(clientId, topic) {
     logger.debug(`[MQTT-Broker-Interop-Plugin:MQTT]: Client subscribed - clientId: ${clientId}, topic: ${topic}`);
     this.subscriptions.count++;
+
+    // Upsert metrics to table
+    upsertSysMetric('$SYS/broker/subscriptions/count', this.subscriptions.count);
   }
 
   onUnsubscribe(clientId, topic) {
     logger.debug(`[MQTT-Broker-Interop-Plugin:MQTT]: Client unsubscribed - clientId: ${clientId}, topic: ${topic}`);
     this.subscriptions.count--;
+
+    // Upsert metrics to table
+    upsertSysMetric('$SYS/broker/subscriptions/count', this.subscriptions.count);
   }
 
   onRetainedMessageAdded() {
     logger.debug('[MQTT-Broker-Interop-Plugin:MQTT]: Retained message added');
     this.retained.count++;
+
+    // Upsert metrics to table
+    upsertSysMetric('$SYS/broker/retained messages/count', this.retained.count);
   }
 
   onRetainedMessageRemoved() {
     logger.debug('[MQTT-Broker-Interop-Plugin:MQTT]: Retained message removed');
     this.retained.count--;
+
+    // Upsert metrics to table
+    upsertSysMetric('$SYS/broker/retained messages/count', this.retained.count);
   }
 
   onMessageDropped() {
