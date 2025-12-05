@@ -1,7 +1,3 @@
-type SYS @table(database: "test") @export(name: "$SYS") {
-    id: Int @primaryKey
-}
-
 # MQTT Topics Database Schema
 
 # $SYS Metrics Table - stores broker statistics for MQTT $SYS topics
