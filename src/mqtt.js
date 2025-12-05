@@ -89,8 +89,7 @@ export class MqttMetrics {
       publishSent: []
     };
 
-    // Update system metrics periodically
-    this._updateSystemMetrics();
+    // Update system metrics periodically (delayed start after table initialization)
     this._metricsInterval = setInterval(() => this._updateSystemMetrics(), 60000); // Update every minute
     // Allow Node.js to exit if this is the only thing keeping it alive (important for tests)
     if (this._metricsInterval.unref) {
@@ -607,6 +606,9 @@ export function upsertSysMetric(topic, value) {
 export function setSysMetricsTable(table) {
   sysMetricsTable = table;
   logger.info('[MQTT-Broker-Interop-Plugin:MQTT]: $SYS metrics table reference set');
+
+  // Trigger initial system metrics update now that table is available
+  metrics._updateSystemMetrics();
 }
 
 /**
