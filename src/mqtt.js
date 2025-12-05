@@ -13,6 +13,9 @@ export const topicRegistry = new Set();
 // Table registry to track table metadata
 export const tableRegistry = new Map();
 
+// $SYS metrics table reference (set during plugin initialization)
+let sysMetricsTable = null;
+
 /**
  * MqttMetrics - Tracks MQTT broker statistics
  * This is the primary extension point for adding new metrics
@@ -244,6 +247,43 @@ export class MqttMetrics {
 
     // Calculate averages
     this._calculateLoadAverages();
+
+    // Upsert heap metrics to table
+    upsertSysMetric('$SYS/broker/heap/current', this.heap.current);
+    upsertSysMetric('$SYS/broker/heap/maximum', this.heap.maximum);
+
+    // Upsert uptime
+    const uptime = Math.floor((Date.now() - this.startTime.getTime()) / 1000);
+    upsertSysMetric('$SYS/broker/uptime', uptime);
+
+    // Upsert load averages
+    upsertSysMetric('$SYS/broker/load/connections/1min', this.load.connections.oneMin);
+    upsertSysMetric('$SYS/broker/load/connections/5min', this.load.connections.fiveMin);
+    upsertSysMetric('$SYS/broker/load/connections/15min', this.load.connections.fifteenMin);
+
+    upsertSysMetric('$SYS/broker/load/messages/received/1min', this.load.messagesReceived.oneMin);
+    upsertSysMetric('$SYS/broker/load/messages/received/5min', this.load.messagesReceived.fiveMin);
+    upsertSysMetric('$SYS/broker/load/messages/received/15min', this.load.messagesReceived.fifteenMin);
+
+    upsertSysMetric('$SYS/broker/load/messages/sent/1min', this.load.messagesSent.oneMin);
+    upsertSysMetric('$SYS/broker/load/messages/sent/5min', this.load.messagesSent.fiveMin);
+    upsertSysMetric('$SYS/broker/load/messages/sent/15min', this.load.messagesSent.fifteenMin);
+
+    upsertSysMetric('$SYS/broker/load/bytes/received/1min', this.load.bytesReceived.oneMin);
+    upsertSysMetric('$SYS/broker/load/bytes/received/5min', this.load.bytesReceived.fiveMin);
+    upsertSysMetric('$SYS/broker/load/bytes/received/15min', this.load.bytesReceived.fifteenMin);
+
+    upsertSysMetric('$SYS/broker/load/bytes/sent/1min', this.load.bytesSent.oneMin);
+    upsertSysMetric('$SYS/broker/load/bytes/sent/5min', this.load.bytesSent.fiveMin);
+    upsertSysMetric('$SYS/broker/load/bytes/sent/15min', this.load.bytesSent.fifteenMin);
+
+    upsertSysMetric('$SYS/broker/load/publish/received/1min', this.load.publishReceived.oneMin);
+    upsertSysMetric('$SYS/broker/load/publish/received/5min', this.load.publishReceived.fiveMin);
+    upsertSysMetric('$SYS/broker/load/publish/received/15min', this.load.publishReceived.fifteenMin);
+
+    upsertSysMetric('$SYS/broker/load/publish/sent/1min', this.load.publishSent.oneMin);
+    upsertSysMetric('$SYS/broker/load/publish/sent/5min', this.load.publishSent.fiveMin);
+    upsertSysMetric('$SYS/broker/load/publish/sent/15min', this.load.publishSent.fifteenMin);
   }
 
   _calculateLoadAverages() {
@@ -289,9 +329,6 @@ export const metrics = new MqttMetrics();
 // ============================================================================
 let harperServer = null;
 let mqttPublishTable = null;
-
-// $SYS metrics table reference
-let sysMetricsTable = null;
 
 /**
  * SysTopics - Resource class that handles all $SYS/* topic requests
