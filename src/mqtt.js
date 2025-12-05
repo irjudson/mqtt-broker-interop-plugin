@@ -582,7 +582,7 @@ export function generateMessageId() {
  */
 export function upsertSysMetric(topic, value) {
   if (!sysMetricsTable) {
-    logger.trace(`[MQTT-Broker-Interop-Plugin:MQTT]: Cannot upsert metric '${topic}' - table not initialized`);
+    logger.debug(`[MQTT-Broker-Interop-Plugin:MQTT]: Cannot upsert metric '${topic}' - table not initialized`);
     return;
   }
 
@@ -593,7 +593,7 @@ export function upsertSysMetric(topic, value) {
       value: String(value),
       timestamp: new Date().toISOString()
     });
-    logger.trace(`[MQTT-Broker-Interop-Plugin:MQTT]: Upserted $SYS metric - ${topic} = ${value}`);
+    logger.debug(`[MQTT-Broker-Interop-Plugin:MQTT]: Upserted $SYS metric - ${topic} = ${value}`);
   } catch (error) {
     logger.error(`[MQTT-Broker-Interop-Plugin:MQTT]: Failed to upsert $SYS metric '${topic}':`, error);
   }
