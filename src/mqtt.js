@@ -259,6 +259,9 @@ export const metrics = new MqttMetrics();
 let harperServer = null;
 let mqttPublishTable = null;
 
+// $SYS metrics table reference
+let sysMetricsTable = null;
+
 /**
  * SysTopics - Resource class that handles all $SYS/* topic requests
  * Maps MQTT $SYS topic paths to current metric values
@@ -503,6 +506,15 @@ export function getTableNameForTopic(topic) {
  */
 export function generateMessageId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+}
+
+/**
+ * Set the $SYS metrics table reference
+ * @param {Object} table - HarperDB table instance
+ */
+export function setSysMetricsTable(table) {
+  sysMetricsTable = table;
+  logger.info('[MQTT-Broker-Interop-Plugin:MQTT]: $SYS metrics table reference set');
 }
 
 // ============================================================================
