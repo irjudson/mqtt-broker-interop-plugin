@@ -588,10 +588,10 @@ export function upsertSysMetric(topic, value) {
 
   try {
     sysMetricsTable.put({
-      id: topic, // Use topic as PK for upsert
+      id: topic,
       topic: topic,
-      value: value,
-      timestamp: new Date()
+      value: String(value),
+      timestamp: new Date().toISOString()
     });
     logger.trace(`[MQTT-Broker-Interop-Plugin:MQTT]: Upserted $SYS metric - ${topic} = ${value}`);
   } catch (error) {
