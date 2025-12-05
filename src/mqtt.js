@@ -770,14 +770,38 @@ export function setupMqttMonitoring(server, _logger, _sysInterval) {
     const topic = packet?.topic;
     const payload = packet?.payload;
     const clientId = session?.sessionId;
+    const qos = packet?.qos || 0;
+    const retain = packet?.retain || false;
     const byteCount = payload ? Buffer.byteLength(payload) : 0;
     logger.debug(`[MQTT-Broker-Interop-Plugin:MQTT]: Publish received - clientId: ${clientId}, topic: ${topic}, bytes: ${byteCount}`);
     metrics.onPublishReceived({ topic, payload }, byteCount);
 
+    // Skip $SYS topics - those are managed separately
+    if (topic && topic.startsWith('$SYS/')) {
+      logger.trace('[MQTT-Broker-Interop-Plugin:MQTT]: Skipping $SYS topic publish');
+      return;
+    }
+
     // Track topic in registry (exclude $SYS topics from general registry)
-    if (topic && !topic.startsWith('$SYS/')) {
+    if (topic) {
       topicRegistry.add(topic);
       logger.trace(`[MQTT-Broker-Interop-Plugin:MQTT]: Topic added to registry: ${topic}`);
+
+      // Write message to appropriate table
+      const tableName = getTableNameForTopic(topic);
+      writeMessageToTable(tableName, {
+        topic,
+        payload,
+        qos,
+        retain,
+        client_id: clientId
+      });
+
+      // Update retained message tracking
+      if (retain) {
+        logger.debug(`[MQTT-Broker-Interop-Plugin:MQTT]: Retained message published to topic '${topic}'`);
+        updateRetainedStatus(tableName, true);
+      }
     }
   });
 
