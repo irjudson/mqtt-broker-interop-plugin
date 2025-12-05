@@ -823,10 +823,28 @@ export function setupMqttMonitoring(server, _logger, _sysInterval) {
           return;
         }
 
-        // Skip wildcards - they don't create tables
+        // Handle wildcards - extract base topic and create table for it
         if (topic.includes('#') || topic.includes('+')) {
           logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: Wildcard subscription - topic: ${topic}`);
           metrics.onSubscribe(clientId, topic);
+
+          // Extract base topic (e.g., "testtopic/#" -> "testtopic")
+          const baseTopic = topic.split('/')[0];
+          if (baseTopic && baseTopic !== '#' && baseTopic !== '+') {
+            const tableName = getTableNameForTopic(baseTopic);
+            if (!tableRegistry.has(tableName)) {
+              logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: Creating table for wildcard base - table: ${tableName}, baseTopic: ${baseTopic}`);
+              createTableForTopic(baseTopic, tableName);
+              tableRegistry.set(tableName, {
+                tableName,
+                subscriptionCount: 1,
+                hasRetained: false
+              });
+            } else {
+              const entry = tableRegistry.get(tableName);
+              entry.subscriptionCount++;
+            }
+          }
           return;
         }
 

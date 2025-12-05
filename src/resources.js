@@ -396,10 +396,13 @@ export class AllTopicsResource {
   }
 }
 
-// Export as $wildcard to accept ALL topic subscriptions
+// Export as wildcard pattern to accept ALL topic subscriptions
+// The * pattern should catch all topics that don't match other resources
 // Tables are created when messages are published, and HarperDB's
 // native wildcard matching routes messages to subscribers
-export const $wildcard = AllTopicsResource;
+export const $star = AllTopicsResource;
+// Also try alternative naming conventions
+export const star = AllTopicsResource;
 
 // Export a helper to get current metrics directly
 export function getMetrics() {
