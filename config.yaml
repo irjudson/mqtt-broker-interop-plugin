@@ -8,8 +8,8 @@ rest: true
 graphqlSchema:
   files: 'schema/schema.graphql'
 
-# jsResource:
-#   files: 'src/resources.js'
+jsResource:
+  files: 'src/resources.js'
 
 # MQTT Configuration
 mqtt:

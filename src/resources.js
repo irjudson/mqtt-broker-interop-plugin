@@ -260,6 +260,100 @@ export class WildcardTopicsResource {
 // Export the wildcard resource
 export const Wildcard = WildcardTopicsResource;
 
+/**
+ * Dynamic Topics Resource - handles all non-$SYS MQTT topics
+ * Creates tables dynamically for new topics and stores messages
+ */
+export class DynamicTopicsResource {
+  /**
+   * GET handler for any non-$SYS topic
+   * @param {Object} request - Request object with path property
+   * @returns {Object|Array} - Messages from the topic's table
+   */
+  async get(request) {
+    const topic = request.path || request.url;
+    logger.debug(`[MQTT-Broker-Interop-Plugin:Resources]: DynamicTopicsResource GET request - topic: ${topic}`);
+
+    // Import helper functions
+    const { getTableNameForTopic, createTableForTopic } = await import('./mqtt.js');
+
+    // Get the table name for this topic
+    const tableName = getTableNameForTopic(topic);
+
+    // Get or create the table
+    const table = await createTableForTopic(topic, tableName);
+
+    if (!table) {
+      logger.warn(`[MQTT-Broker-Interop-Plugin:Resources]: Could not get/create table for topic: ${topic}`);
+      return { topic, messages: [] };
+    }
+
+    // Return recent messages from the table
+    try {
+      const messages = [];
+      for await (const message of table.search()) {
+        messages.push(message);
+      }
+
+      logger.debug(`[MQTT-Broker-Interop-Plugin:Resources]: Returning ${messages.length} messages for topic: ${topic}`);
+      return { topic, messages };
+    } catch (error) {
+      logger.error(`[MQTT-Broker-Interop-Plugin:Resources]: Error reading messages:`, error);
+      return { topic, messages: [] };
+    }
+  }
+
+  /**
+   * Subscribe to any MQTT topic
+   * Creates table dynamically if needed and streams updates
+   * @param {Object} request - Request object with path property
+   * @returns {AsyncIterator} - Async iterator for topic updates
+   */
+  async *subscribe(request) {
+    const topic = request.path || request.url;
+    logger.info(`[MQTT-Broker-Interop-Plugin:Resources]: DynamicTopicsResource subscribe - topic: ${topic}`);
+
+    // Import helper functions
+    const { getTableNameForTopic, createTableForTopic } = await import('./mqtt.js');
+
+    // Get the table name for this topic
+    const tableName = getTableNameForTopic(topic);
+
+    // Get or create the table
+    const table = await createTableForTopic(topic, tableName);
+
+    if (!table) {
+      logger.error(`[MQTT-Broker-Interop-Plugin:Resources]: Could not get/create table for topic: ${topic}`);
+      yield { topic, error: 'Could not create table' };
+      return;
+    }
+
+    logger.info(`[MQTT-Broker-Interop-Plugin:Resources]: Subscription active for topic: ${topic}, table: ${tableName}`);
+
+    // Yield initial acknowledgment
+    yield {
+      topic: topic,
+      timestamp: new Date().toISOString(),
+      status: 'subscribed'
+    };
+
+    // Keep subscription alive with periodic updates
+    while (true) {
+      await new Promise(resolve => setTimeout(resolve, 30000));
+
+      // Could yield latest messages here if needed
+      yield {
+        topic: topic,
+        timestamp: new Date().toISOString(),
+        status: 'alive'
+      };
+    }
+  }
+}
+
+// Export the dynamic topics resource with wildcard pattern to catch all topics
+export const $wildcard = DynamicTopicsResource;
+
 // Export a helper to get current metrics directly
 export function getMetrics() {
   logger.trace('[MQTT-Broker-Interop-Plugin:Resources]: getMetrics called');
