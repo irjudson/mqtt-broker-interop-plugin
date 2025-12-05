@@ -623,8 +623,36 @@ export async function createTableForTopic(topic, tableName) {
     return table;
   }
 
-  logger.debug(`[MQTT-Broker-Interop-Plugin:MQTT]: Table '${tableName}' not found for topic '${topic}'`);
-  return null;
+  // Table doesn't exist - create it dynamically
+  logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: Creating table '${tableName}' for topic '${topic}'`);
+
+  try {
+    // Use HarperDB's table creation API
+    if (server?.ensureTable) {
+      const newTable = await server.ensureTable({
+        name: tableName,
+        schema: {
+          id: { type: 'string', primaryKey: true },
+          topic: { type: 'string', indexed: true },
+          payload: { type: 'string' },
+          qos: { type: 'number' },
+          retain: { type: 'boolean' },
+          timestamp: { type: 'string' },
+          client_id: { type: 'string' }
+        },
+        export: { name: topic } // Make this table subscribable as MQTT topic
+      });
+
+      logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: Table '${tableName}' created successfully`);
+      return newTable;
+    } else {
+      logger.error(`[MQTT-Broker-Interop-Plugin:MQTT]: Cannot create table - server.ensureTable not available`);
+      return null;
+    }
+  } catch (error) {
+    logger.error(`[MQTT-Broker-Interop-Plugin:MQTT]: Failed to create table '${tableName}':`, error);
+    return null;
+  }
 }
 
 /**
