@@ -260,6 +260,60 @@ export class WildcardTopicsResource {
 // Export the wildcard resource
 export const Wildcard = WildcardTopicsResource;
 
+/**
+ * Catch-all resource for handling any MQTT topic subscription
+ * This allows clients to subscribe to any topic pattern
+ */
+export class CatchAllTopicsResource {
+  /**
+   * GET handler for any topic
+   * @param {Object} request - Request object with path property
+   * @returns {Object} - Topic information
+   */
+  get(request) {
+    const topic = request.path || request.url;
+    logger.trace(`[MQTT-Broker-Interop-Plugin:Resources]: CatchAllTopicsResource GET request - topic: ${topic}`);
+
+    // Return empty result to acknowledge the topic exists
+    return {
+      topic: topic,
+      timestamp: new Date().toISOString(),
+      message: 'Topic subscription active'
+    };
+  }
+
+  /**
+   * Subscribe to any MQTT topic
+   * Returns an async iterator for real-time updates
+   * @param {Object} request - Request object with path property
+   * @returns {AsyncIterator} - Async iterator for topic updates
+   */
+  async *subscribe(request) {
+    const topic = request.path || request.url;
+    logger.info(`[MQTT-Broker-Interop-Plugin:Resources]: CatchAllTopicsResource subscribe - topic: ${topic}`);
+
+    // Yield initial acknowledgment
+    yield {
+      topic: topic,
+      timestamp: new Date().toISOString(),
+      message: 'Subscription active'
+    };
+
+    // Keep subscription alive
+    while (true) {
+      await new Promise(resolve => setTimeout(resolve, 30000)); // 30 second keepalive
+      yield {
+        topic: topic,
+        timestamp: new Date().toISOString(),
+        message: 'Subscription active'
+      };
+    }
+  }
+}
+
+// Export the catch-all resource with wildcard pattern
+export const $wildcard = CatchAllTopicsResource;
+
 // Export a helper to get current metrics directly
 export function getMetrics() {
   logger.trace('[MQTT-Broker-Interop-Plugin:Resources]: getMetrics called');
