@@ -357,10 +357,10 @@ export class SysTopics {
     }
 
     // Client metrics
-    if (topic === '$SYS/broker/clients/connected') {
+    if (topic === '$SYS/broker/clients/connected' || topic === '$SYS/broker/clients/active') {
       return this.metrics.clients.connected;
     }
-    if (topic === '$SYS/broker/clients/disconnected') {
+    if (topic === '$SYS/broker/clients/disconnected' || topic === '$SYS/broker/clients/inactive') {
       return this.metrics.clients.disconnected;
     }
     if (topic === '$SYS/broker/clients/maximum') {
@@ -368,6 +368,9 @@ export class SysTopics {
     }
     if (topic === '$SYS/broker/clients/total') {
       return this.metrics.clients.total;
+    }
+    if (topic === '$SYS/broker/clients/expired') {
+      return this.metrics.clients.expired;
     }
 
     // Message metrics
@@ -400,11 +403,6 @@ export class SysTopics {
       return this.metrics.retained.count;
     }
 
-    // Additional client metrics
-    if (topic === '$SYS/broker/clients/expired') {
-      return this.metrics.clients.expired;
-    }
-
     // Additional message metrics
     if (topic === '$SYS/broker/messages/inflight') {
       return this.metrics.messages.inflight;
@@ -416,19 +414,19 @@ export class SysTopics {
       return this.metrics.messages.publishDropped;
     }
 
-    // Store metrics
+    // Store metrics (note: store/messages/count is alias for messages/stored per Mosquitto)
     if (topic === '$SYS/broker/store/messages/count') {
-      return this.metrics.store.messageCount;
+      return this.metrics.messages.stored;
     }
     if (topic === '$SYS/broker/store/messages/bytes') {
       return this.metrics.store.messageBytes;
     }
 
-    // System metrics
-    if (topic === '$SYS/broker/heap/current') {
+    // System metrics (heap)
+    if (topic === '$SYS/broker/heap/current' || topic === '$SYS/broker/heap/current size') {
       return this.metrics.heap.current;
     }
-    if (topic === '$SYS/broker/heap/maximum') {
+    if (topic === '$SYS/broker/heap/maximum' || topic === '$SYS/broker/heap/maximum size') {
       return this.metrics.heap.maximum;
     }
     if (topic === '$SYS/broker/uptime') {
