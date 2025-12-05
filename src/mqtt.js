@@ -694,6 +694,31 @@ export function updateRetainedStatus(tableName, hasRetained) {
   }
 }
 
+/**
+ * Cleanup (drop) a table that has no subscribers and no retained messages
+ * @param {string} tableName - Table name to cleanup
+ */
+export function cleanupTable(tableName) {
+  if (!harperServer) {
+    logger.error(`[MQTT-Broker-Interop-Plugin:MQTT]: Cannot cleanup table '${tableName}' - server not initialized`);
+    return;
+  }
+
+  logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: Cleaning up unused table: ${tableName}`);
+
+  try {
+    // Drop the table
+    harperServer.dropTable('mqtt_topics', tableName);
+
+    // Remove from registry
+    tableRegistry.delete(tableName);
+
+    logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: Table '${tableName}' dropped successfully`);
+  } catch (error) {
+    logger.error(`[MQTT-Broker-Interop-Plugin:MQTT]: Failed to drop table '${tableName}':`, error);
+  }
+}
+
 // ============================================================================
 // MQTT Event Monitoring Setup
 // ============================================================================
