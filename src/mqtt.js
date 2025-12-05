@@ -640,6 +640,45 @@ export function createTableForTopic(topic, tableName) {
   }
 }
 
+/**
+ * Write a message to the appropriate table
+ * @param {string} tableName - Table name
+ * @param {Object} message - Message data (topic, payload, qos, retain, client_id)
+ */
+export function writeMessageToTable(tableName, message) {
+  if (!harperServer) {
+    logger.error(`[MQTT-Broker-Interop-Plugin:MQTT]: Cannot write message - server not initialized`);
+    return;
+  }
+
+  try {
+    // Get or create table
+    let tableEntry = tableRegistry.get(tableName);
+    if (!tableEntry) {
+      // Table doesn't exist yet (published before subscribe)
+      logger.debug(`[MQTT-Broker-Interop-Plugin:MQTT]: Table '${tableName}' not in registry, creating on publish`);
+      createTableForTopic(message.topic, tableName);
+      tableEntry = { tableName, subscriptionCount: 0, hasRetained: false };
+      tableRegistry.set(tableName, tableEntry);
+    }
+
+    const table = harperServer.getTable('mqtt_topics', tableName);
+    table.put({
+      id: generateMessageId(),
+      topic: message.topic,
+      payload: message.payload,
+      qos: message.qos,
+      retain: message.retain,
+      timestamp: new Date(),
+      client_id: message.client_id
+    });
+
+    logger.trace(`[MQTT-Broker-Interop-Plugin:MQTT]: Message written to table '${tableName}' for topic '${message.topic}'`);
+  } catch (error) {
+    logger.error(`[MQTT-Broker-Interop-Plugin:MQTT]: Failed to write message to table '${tableName}':`, error);
+  }
+}
+
 // ============================================================================
 // MQTT Event Monitoring Setup
 // ============================================================================
