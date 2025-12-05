@@ -145,6 +145,11 @@ export class MqttMetrics {
     this.messages.received++;
     this.messages.publishReceived++;
     this.bytes.received += byteCount;
+
+    // Upsert metrics to table
+    upsertSysMetric('$SYS/broker/messages/received', this.messages.received);
+    upsertSysMetric('$SYS/broker/publish/messages/received', this.messages.publishReceived);
+    upsertSysMetric('$SYS/broker/bytes/received', this.bytes.received);
   }
 
   onPublishSent(message, byteCount) {
