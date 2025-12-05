@@ -866,10 +866,41 @@ export function setupMqttMonitoring(server, _logger, _sysInterval) {
         logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: Unsubscription - clientId: ${clientId}, topic: ${topic}`);
         metrics.onUnsubscribe(clientId, topic);
 
-        // Check if it's a $SYS topic unsubscription
+        // Skip $SYS topics
         if (topic && (topic.startsWith('$SYS/') || topic === '$SYS/#')) {
           logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: $SYS topic unsubscription detected - clientId: ${clientId}, topic: ${topic}`);
           onSysTopicUnsubscribe(clientId, topic);
+          return;
+        }
+
+        // Skip wildcards
+        if (topic && (topic.includes('#') || topic.includes('+'))) {
+          logger.debug(`[MQTT-Broker-Interop-Plugin:MQTT]: Wildcard unsubscription - topic: ${topic}`);
+          return;
+        }
+
+        // Skip empty topics
+        if (!topic) {
+          return;
+        }
+
+        // Decrement subscription count
+        const tableName = getTableNameForTopic(topic);
+        const tableEntry = tableRegistry.get(tableName);
+
+        if (tableEntry) {
+          tableEntry.subscriptionCount--;
+          logger.debug(`[MQTT-Broker-Interop-Plugin:MQTT]: Decremented subscription count for table '${tableName}': ${tableEntry.subscriptionCount}`);
+
+          // Cleanup only if no subscribers AND no retained messages
+          if (tableEntry.subscriptionCount === 0 && !tableEntry.hasRetained) {
+            logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: Table '${tableName}' is now inactive, cleaning up`);
+            cleanupTable(tableName);
+          } else if (tableEntry.subscriptionCount === 0) {
+            logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: Table '${tableName}' has no subscribers but has retained messages, keeping alive`);
+          }
+        } else {
+          logger.debug(`[MQTT-Broker-Interop-Plugin:MQTT]: Unsubscribe from topic '${topic}' - table '${tableName}' not in registry`);
         }
       });
     }
