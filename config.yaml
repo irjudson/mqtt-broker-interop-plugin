@@ -8,10 +8,10 @@ rest: true
 graphqlSchema:
   files: 'schema/schema.graphql'
 
-# jsResource:
-#   files: 'src/resources.js'
-# Disabled - jsResource is for REST/GraphQL, not MQTT
-# MQTT topics are handled via @export in schema.graphql
+jsResource:
+  files: 'src/resources.js'
+# Enabled - provides catch-all AllTopicsResource for MQTT topic routing
+# Works alongside @export tables in schema.graphql
 
 # MQTT Configuration
 mqtt:
