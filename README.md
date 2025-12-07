@@ -46,6 +46,8 @@ The plugin provides three main components:
 
 3. **Periodic Publisher**: Automatically publishes metric updates at configurable intervals when clients are subscribed to $SYS topics.
 
+4. **Dynamic Table Creation**: Automatically creates HarperDB tables for new MQTT topics when clients subscribe or publish. Tables are registered with `contentType: 'mqtt'` to enable proper MQTT resource routing.
+
 ## Supported $SYS Topics
 
 ### Static Topics (sent once on subscription)
