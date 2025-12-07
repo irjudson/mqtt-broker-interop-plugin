@@ -7,6 +7,13 @@
 const {server} = globalThis;
 const logger = server?.logger || console;
 
+// Load average time windows
+const TIME_WINDOWS = {
+  ONE_MIN: { ms: 60 * 1000, minutes: 1 },
+  FIVE_MIN: { ms: 5 * 60 * 1000, minutes: 5 },
+  FIFTEEN_MIN: { ms: 15 * 60 * 1000, minutes: 15 }
+};
+
 // Global topic registry to track all published topics
 export const topicRegistry = new Set();
 
@@ -289,33 +296,30 @@ export class MqttMetrics {
 
   _calculateLoadAverages() {
     const now = Date.now();
-    const oneMinAgo = now - 60 * 1000;
-    const fiveMinAgo = now - 5 * 60 * 1000;
-    const fifteenMinAgo = now - 15 * 60 * 1000;
 
+    // Helper function to calculate load average for a time window
+    const calculatePeriodAverage = (samples, cutoffTime, minutes) => {
+      const periodSamples = samples.filter(s => s.time > cutoffTime);
+      if (periodSamples.length > 0) {
+        const delta = periodSamples[periodSamples.length - 1].value - periodSamples[0].value;
+        return delta / minutes;
+      }
+      return 0;
+    };
+
+    // Calculate load averages for each metric across all time windows
     Object.keys(this._loadSamples).forEach(metric => {
       const samples = this._loadSamples[metric];
 
-      // Get samples in each time window
-      const oneMinSamples = samples.filter(s => s.time > oneMinAgo);
-      const fiveMinSamples = samples.filter(s => s.time > fiveMinAgo);
-      const fifteenMinSamples = samples.filter(s => s.time > fifteenMinAgo);
-
-      // Calculate averages
-      if (oneMinSamples.length > 0) {
-        const delta = oneMinSamples[oneMinSamples.length - 1].value - oneMinSamples[0].value;
-        this.load[metric].oneMin = delta / (oneMinSamples.length > 1 ? 1 : 1);
-      }
-
-      if (fiveMinSamples.length > 0) {
-        const delta = fiveMinSamples[fiveMinSamples.length - 1].value - fiveMinSamples[0].value;
-        this.load[metric].fiveMin = delta / (fiveMinSamples.length > 1 ? 5 : 1);
-      }
-
-      if (fifteenMinSamples.length > 0) {
-        const delta = fifteenMinSamples[fifteenMinSamples.length - 1].value - fifteenMinSamples[0].value;
-        this.load[metric].fifteenMin = delta / (fifteenMinSamples.length > 1 ? 15 : 1);
-      }
+      this.load[metric].oneMin = calculatePeriodAverage(
+        samples, now - TIME_WINDOWS.ONE_MIN.ms, TIME_WINDOWS.ONE_MIN.minutes
+      );
+      this.load[metric].fiveMin = calculatePeriodAverage(
+        samples, now - TIME_WINDOWS.FIVE_MIN.ms, TIME_WINDOWS.FIVE_MIN.minutes
+      );
+      this.load[metric].fifteenMin = calculatePeriodAverage(
+        samples, now - TIME_WINDOWS.FIFTEEN_MIN.ms, TIME_WINDOWS.FIFTEEN_MIN.minutes
+      );
     });
   }
 }
@@ -328,6 +332,95 @@ export const metrics = new MqttMetrics();
 // ============================================================================
 let harperServer = null;
 let mqttPublishTable = null;
+
+/**
+ * Topic-to-metric mapping for efficient $SYS topic resolution
+ * Each key is a $SYS topic path, each value is a function that returns the current metric value
+ */
+// Helper function to get version (moved outside class for topic map)
+function getBrokerVersion() {
+  // Try to get HarperDB version from various possible sources
+  if (harperServer?.version) {
+    return harperServer.version;
+  }
+  if (process.env.HARPERDB_VERSION) {
+    return process.env.HARPERDB_VERSION;
+  }
+  if (globalThis.harperVersion) {
+    return globalThis.harperVersion;
+  }
+  // Fallback to a generic version string
+  return 'HarperDB 4.x';
+}
+
+const SYS_TOPIC_MAP = {
+  // Static topics
+  '$SYS/broker/version': () => getBrokerVersion(),
+  '$SYS/broker/timestamp': (m) => m.startTime.toISOString(),
+
+  // Client metrics
+  '$SYS/broker/clients/connected': (m) => m.clients.connected,
+  '$SYS/broker/clients/disconnected': (m) => m.clients.disconnected,
+  '$SYS/broker/clients/maximum': (m) => m.clients.maximum,
+  '$SYS/broker/clients/total': (m) => m.clients.total,
+
+  // Message metrics
+  '$SYS/broker/messages/received': (m) => m.messages.received,
+  '$SYS/broker/messages/sent': (m) => m.messages.sent,
+  '$SYS/broker/messages/inflight': (m) => m.messages.inflight,
+  '$SYS/broker/publish/messages/received': (m) => m.messages.publishReceived,
+  '$SYS/broker/publish/messages/sent': (m) => m.messages.publishSent,
+
+  // Bandwidth metrics
+  '$SYS/broker/bytes/received': (m) => m.bytes.received,
+  '$SYS/broker/bytes/sent': (m) => m.bytes.sent,
+
+  // Subscription metrics
+  '$SYS/broker/subscriptions/count': (m) => m.subscriptions.count,
+  '$SYS/broker/retained messages/count': (m) => m.retained.count,
+
+  // System metrics
+  '$SYS/broker/heap/current': (m) => m.heap.current,
+  '$SYS/broker/heap/current size': (m) => m.heap.current,
+  '$SYS/broker/heap/maximum': (m) => m.heap.maximum,
+  '$SYS/broker/heap/maximum size': (m) => m.heap.maximum,
+  '$SYS/broker/uptime': (m) => Math.floor((Date.now() - m.startTime.getTime()) / 1000),
+
+  // Load averages - Connections
+  '$SYS/broker/load/connections/1min': (m) => Math.round(m.load.connections.oneMin),
+  '$SYS/broker/load/connections/5min': (m) => Math.round(m.load.connections.fiveMin),
+  '$SYS/broker/load/connections/15min': (m) => Math.round(m.load.connections.fifteenMin),
+
+  // Load averages - Messages received
+  '$SYS/broker/load/messages/received/1min': (m) => Math.round(m.load.messagesReceived.oneMin),
+  '$SYS/broker/load/messages/received/5min': (m) => Math.round(m.load.messagesReceived.fiveMin),
+  '$SYS/broker/load/messages/received/15min': (m) => Math.round(m.load.messagesReceived.fifteenMin),
+
+  // Load averages - Messages sent
+  '$SYS/broker/load/messages/sent/1min': (m) => Math.round(m.load.messagesSent.oneMin),
+  '$SYS/broker/load/messages/sent/5min': (m) => Math.round(m.load.messagesSent.fiveMin),
+  '$SYS/broker/load/messages/sent/15min': (m) => Math.round(m.load.messagesSent.fifteenMin),
+
+  // Load averages - Bytes received
+  '$SYS/broker/load/bytes/received/1min': (m) => Math.round(m.load.bytesReceived.oneMin),
+  '$SYS/broker/load/bytes/received/5min': (m) => Math.round(m.load.bytesReceived.fiveMin),
+  '$SYS/broker/load/bytes/received/15min': (m) => Math.round(m.load.bytesReceived.fifteenMin),
+
+  // Load averages - Bytes sent
+  '$SYS/broker/load/bytes/sent/1min': (m) => Math.round(m.load.bytesSent.oneMin),
+  '$SYS/broker/load/bytes/sent/5min': (m) => Math.round(m.load.bytesSent.fiveMin),
+  '$SYS/broker/load/bytes/sent/15min': (m) => Math.round(m.load.bytesSent.fifteenMin),
+
+  // Load averages - Publish received
+  '$SYS/broker/load/publish/received/1min': (m) => Math.round(m.load.publishReceived.oneMin),
+  '$SYS/broker/load/publish/received/5min': (m) => Math.round(m.load.publishReceived.fiveMin),
+  '$SYS/broker/load/publish/received/15min': (m) => Math.round(m.load.publishReceived.fifteenMin),
+
+  // Load averages - Publish sent
+  '$SYS/broker/load/publish/sent/1min': (m) => Math.round(m.load.publishSent.oneMin),
+  '$SYS/broker/load/publish/sent/5min': (m) => Math.round(m.load.publishSent.fiveMin),
+  '$SYS/broker/load/publish/sent/15min': (m) => Math.round(m.load.publishSent.fifteenMin),
+};
 
 /**
  * SysTopics - Resource class that handles all $SYS/* topic requests
@@ -348,167 +441,10 @@ export class SysTopics {
     const topic = request.path;
     logger.trace(`[MQTT-Broker-Interop-Plugin:MQTT]: $SYS topic request - ${topic}`);
 
-    // Static topics
-    if (topic === '$SYS/broker/version') {
-      return this.getVersion();
-    }
-    if (topic === '$SYS/broker/timestamp') {
-      return this.metrics.startTime.toISOString();
-    }
-
-    // Client metrics
-    if (topic === '$SYS/broker/clients/connected' || topic === '$SYS/broker/clients/active') {
-      return this.metrics.clients.connected;
-    }
-    if (topic === '$SYS/broker/clients/disconnected' || topic === '$SYS/broker/clients/inactive') {
-      return this.metrics.clients.disconnected;
-    }
-    if (topic === '$SYS/broker/clients/maximum') {
-      return this.metrics.clients.maximum;
-    }
-    if (topic === '$SYS/broker/clients/total') {
-      return this.metrics.clients.total;
-    }
-    if (topic === '$SYS/broker/clients/expired') {
-      return this.metrics.clients.expired;
-    }
-
-    // Message metrics
-    if (topic === '$SYS/broker/messages/received') {
-      return this.metrics.messages.received;
-    }
-    if (topic === '$SYS/broker/messages/sent') {
-      return this.metrics.messages.sent;
-    }
-    if (topic === '$SYS/broker/publish/messages/received') {
-      return this.metrics.messages.publishReceived;
-    }
-    if (topic === '$SYS/broker/publish/messages/sent') {
-      return this.metrics.messages.publishSent;
-    }
-
-    // Bandwidth metrics
-    if (topic === '$SYS/broker/bytes/received') {
-      return this.metrics.bytes.received;
-    }
-    if (topic === '$SYS/broker/bytes/sent') {
-      return this.metrics.bytes.sent;
-    }
-
-    // Subscription metrics
-    if (topic === '$SYS/broker/subscriptions/count') {
-      return this.metrics.subscriptions.count;
-    }
-    if (topic === '$SYS/broker/retained messages/count') {
-      return this.metrics.retained.count;
-    }
-
-    // Additional message metrics
-    if (topic === '$SYS/broker/messages/inflight') {
-      return this.metrics.messages.inflight;
-    }
-    if (topic === '$SYS/broker/messages/stored') {
-      return this.metrics.messages.stored;
-    }
-    if (topic === '$SYS/broker/publish/messages/dropped') {
-      return this.metrics.messages.publishDropped;
-    }
-
-    // Store metrics (note: store/messages/count is alias for messages/stored per Mosquitto)
-    if (topic === '$SYS/broker/store/messages/count') {
-      return this.metrics.messages.stored;
-    }
-    if (topic === '$SYS/broker/store/messages/bytes') {
-      return this.metrics.store.messageBytes;
-    }
-
-    // System metrics (heap)
-    if (topic === '$SYS/broker/heap/current' || topic === '$SYS/broker/heap/current size') {
-      return this.metrics.heap.current;
-    }
-    if (topic === '$SYS/broker/heap/maximum' || topic === '$SYS/broker/heap/maximum size') {
-      return this.metrics.heap.maximum;
-    }
-    if (topic === '$SYS/broker/uptime') {
-      const uptime = Date.now() - this.metrics.startTime.getTime();
-      return Math.floor(uptime / 1000); // seconds
-    }
-
-    // Load average metrics - Connections
-    if (topic === '$SYS/broker/load/connections/1min') {
-      return Math.round(this.metrics.load.connections.oneMin);
-    }
-    if (topic === '$SYS/broker/load/connections/5min') {
-      return Math.round(this.metrics.load.connections.fiveMin);
-    }
-    if (topic === '$SYS/broker/load/connections/15min') {
-      return Math.round(this.metrics.load.connections.fifteenMin);
-    }
-
-    // Load average metrics - Messages Received
-    if (topic === '$SYS/broker/load/messages/received/1min') {
-      return Math.round(this.metrics.load.messagesReceived.oneMin);
-    }
-    if (topic === '$SYS/broker/load/messages/received/5min') {
-      return Math.round(this.metrics.load.messagesReceived.fiveMin);
-    }
-    if (topic === '$SYS/broker/load/messages/received/15min') {
-      return Math.round(this.metrics.load.messagesReceived.fifteenMin);
-    }
-
-    // Load average metrics - Messages Sent
-    if (topic === '$SYS/broker/load/messages/sent/1min') {
-      return Math.round(this.metrics.load.messagesSent.oneMin);
-    }
-    if (topic === '$SYS/broker/load/messages/sent/5min') {
-      return Math.round(this.metrics.load.messagesSent.fiveMin);
-    }
-    if (topic === '$SYS/broker/load/messages/sent/15min') {
-      return Math.round(this.metrics.load.messagesSent.fifteenMin);
-    }
-
-    // Load average metrics - Bytes Received
-    if (topic === '$SYS/broker/load/bytes/received/1min') {
-      return Math.round(this.metrics.load.bytesReceived.oneMin);
-    }
-    if (topic === '$SYS/broker/load/bytes/received/5min') {
-      return Math.round(this.metrics.load.bytesReceived.fiveMin);
-    }
-    if (topic === '$SYS/broker/load/bytes/received/15min') {
-      return Math.round(this.metrics.load.bytesReceived.fifteenMin);
-    }
-
-    // Load average metrics - Bytes Sent
-    if (topic === '$SYS/broker/load/bytes/sent/1min') {
-      return Math.round(this.metrics.load.bytesSent.oneMin);
-    }
-    if (topic === '$SYS/broker/load/bytes/sent/5min') {
-      return Math.round(this.metrics.load.bytesSent.fiveMin);
-    }
-    if (topic === '$SYS/broker/load/bytes/sent/15min') {
-      return Math.round(this.metrics.load.bytesSent.fifteenMin);
-    }
-
-    // Load average metrics - Publish Received
-    if (topic === '$SYS/broker/load/publish/received/1min') {
-      return Math.round(this.metrics.load.publishReceived.oneMin);
-    }
-    if (topic === '$SYS/broker/load/publish/received/5min') {
-      return Math.round(this.metrics.load.publishReceived.fiveMin);
-    }
-    if (topic === '$SYS/broker/load/publish/received/15min') {
-      return Math.round(this.metrics.load.publishReceived.fifteenMin);
-    }
-
-    // Load average metrics - Publish Sent
-    if (topic === '$SYS/broker/load/publish/sent/1min') {
-      return Math.round(this.metrics.load.publishSent.oneMin);
-    }
-    if (topic === '$SYS/broker/load/publish/sent/5min') {
-      return Math.round(this.metrics.load.publishSent.fiveMin);
-    }
-    if (topic === '$SYS/broker/load/publish/sent/15min') {
-      return Math.round(this.metrics.load.publishSent.fifteenMin);
+    // Use topic map for efficient lookup
+    const handler = SYS_TOPIC_MAP[topic];
+    if (handler) {
+      return handler(this.metrics);
     }
 
     // Unknown topic
@@ -521,18 +457,7 @@ export class SysTopics {
    */
   getVersion() {
     logger.trace('[MQTT-Broker-Interop-Plugin:MQTT]: Getting broker version');
-    // Try to get HarperDB version from various possible sources
-    if (harperServer?.version) {
-      return harperServer.version;
-    }
-    if (process.env.HARPERDB_VERSION) {
-      return process.env.HARPERDB_VERSION;
-    }
-    if (globalThis.harperVersion) {
-      return globalThis.harperVersion;
-    }
-    // Fallback to a generic version string
-    return 'HarperDB 4.x';
+    return getBrokerVersion();
   }
 }
 // ============================================================================
@@ -785,12 +710,16 @@ export function setupMqttMonitoring(server, _logger, _sysInterval) {
 
       // Write message to appropriate table
       const tableName = getTableNameForTopic(topic);
+      // Fire-and-forget for performance - don't await to avoid blocking MQTT event processing
+      // Explicit error handling to avoid unhandled promise rejections
       writeMessageToTable(tableName, {
         topic,
         payload,
         qos,
         retain,
         client_id: clientId
+      }).catch(error => {
+        logger.error(`[MQTT-Broker-Interop-Plugin:MQTT]: Failed to persist message to '${tableName}':`, error);
       });
 
       // Update retained message tracking
@@ -834,7 +763,10 @@ export function setupMqttMonitoring(server, _logger, _sysInterval) {
             const tableName = getTableNameForTopic(baseTopic);
             if (!tableRegistry.has(tableName)) {
               logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: Creating table for wildcard base - table: ${tableName}, baseTopic: ${baseTopic}`);
-              createTableForTopic(baseTopic, tableName);
+              // Fire-and-forget table creation with explicit error handling
+              createTableForTopic(baseTopic, tableName).catch(error => {
+                logger.error(`[MQTT-Broker-Interop-Plugin:MQTT]: Failed to create table for wildcard base '${baseTopic}':`, error);
+              });
               tableRegistry.set(tableName, {
                 tableName,
                 subscriptionCount: 1,
@@ -854,7 +786,10 @@ export function setupMqttMonitoring(server, _logger, _sysInterval) {
         // Create table if doesn't exist (check registry first)
         if (!tableRegistry.has(tableName)) {
           logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: Creating new table for subscription - table: ${tableName}, topic: ${topic}`);
-          createTableForTopic(topic, tableName);
+          // Fire-and-forget table creation with explicit error handling
+          createTableForTopic(topic, tableName).catch(error => {
+            logger.error(`[MQTT-Broker-Interop-Plugin:MQTT]: Failed to create table for subscription '${topic}':`, error);
+          });
           tableRegistry.set(tableName, {
             tableName,
             subscriptionCount: 0,

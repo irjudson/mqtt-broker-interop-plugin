@@ -10,6 +10,38 @@ const logger = server?.logger || console;
 // Create singleton instance of SysTopics
 const sysTopics = new SysTopics();
 
+/**
+ * Update mqtt_topics table metadata for subscription tracking
+ * Eliminates code duplication across PUT/subscribe/unsubscribe operations
+ * @param {string} tableName - Dynamic table name (e.g., 'mqtt_mqtttest')
+ * @param {string} baseTopic - Base MQTT topic (e.g., 'MQTTTest')
+ * @param {Object} metadata - { subscriptionCount: number, hasRetained: boolean }
+ * @returns {Promise<boolean>} Success status
+ */
+async function updateMqttTopicsMetadata(tableName, baseTopic, metadata) {
+  const mqttTopicsTable = globalThis.tables?.mqtt_topics;
+  if (!mqttTopicsTable) {
+    logger.debug('[MQTT-Broker-Interop-Plugin:Resources]: mqtt_topics table not available for metadata update');
+    return false;
+  }
+
+  try {
+    await mqttTopicsTable.put({
+      id: tableName,
+      topic: baseTopic,
+      payload: JSON.stringify(metadata),
+      qos: 0,
+      retain: false,
+      timestamp: new Date().toISOString(),
+      client_id: 'system'
+    });
+    return true;
+  } catch (error) {
+    logger.warn(`[MQTT-Broker-Interop-Plugin:Resources]: Failed to update mqtt_topics metadata for '${tableName}':`, error);
+    return false;
+  }
+}
+
 // Define all available $SYS topics based on Mosquitto standard
 const ALL_SYS_TOPICS = [
   // Static topics
@@ -403,11 +435,12 @@ export class AllTopicsResource {
  * MQTT Topics Resource - extends mqtt_topics table to intercept all MQTT publishes/subscribes
  * Routes them to dynamically created topic-specific tables
  */
-// Create base class that extends mqtt_topics if tables global exists (HarperDB runtime)
-// Otherwise, create a standalone class for testing
+// BaseClass extends tables.mqtt_topics in HarperDB runtime for proper table integration
+// Falls back to empty class in test environment where globalThis.tables is undefined
+// This allows tests to run without a full HarperDB instance
 const BaseClass = (typeof globalThis.tables !== 'undefined' && globalThis.tables?.mqtt_topics)
   ? globalThis.tables.mqtt_topics
-  : class {};
+  : class {}; // Empty base class for testing
 
 export class mqtt_topics extends BaseClass {
   static loadAsInstance = false; // enable the updated API
@@ -428,12 +461,12 @@ export class mqtt_topics extends BaseClass {
 
     const baseTopic = segments[0];
     const rowId = segments.slice(1).join('/') || baseTopic;
-    const tableName = `mqtt_${baseTopic.toLowerCase().replace(/[^a-z0-9_]/g, '_')}`;
+
+    // Use centralized table naming function
+    const { createTableForTopic, getTableNameForTopic } = await import('./mqtt.js');
+    const tableName = getTableNameForTopic(baseTopic);
 
     logger.info(`[MQTT-Broker-Interop-Plugin:Resources]: Routing - baseTopic: ${baseTopic}, table: ${tableName}, rowId: ${rowId}`);
-
-    // Create/ensure table exists (might publish before anyone subscribes)
-    const { createTableForTopic } = await import('./mqtt.js');
     await createTableForTopic(baseTopic, tableName);
 
     // Get the table
@@ -466,15 +499,7 @@ export class mqtt_topics extends BaseClass {
           if (trackingEntry && trackingEntry.doesExist()) {
             const metadata = JSON.parse(trackingEntry.payload || '{}');
             metadata.hasRetained = true;
-            await mqttTopicsTable.put({
-              id: tableName,
-              topic: baseTopic,
-              payload: JSON.stringify(metadata),
-              qos: 0,
-              retain: false,
-              timestamp: new Date().toISOString(),
-              client_id: 'system'
-            });
+            await updateMqttTopicsMetadata(tableName, baseTopic, metadata);
           }
         } catch (error) {
           logger.warn(`[MQTT-Broker-Interop-Plugin:Resources]: Failed to mark retained in mqtt_topics:`, error);
@@ -500,12 +525,12 @@ export class mqtt_topics extends BaseClass {
     }
 
     const baseTopic = segments[0];
-    const tableName = `mqtt_${baseTopic.toLowerCase().replace(/[^a-z0-9_]/g, '_')}`;
+
+    // Use centralized table naming function
+    const { createTableForTopic, tableRegistry, getTableNameForTopic } = await import('./mqtt.js');
+    const tableName = getTableNameForTopic(baseTopic);
 
     logger.info(`[MQTT-Broker-Interop-Plugin:Resources]: Subscribing - baseTopic: ${baseTopic}, table: ${tableName}`);
-
-    // Create table on first subscription
-    const { createTableForTopic, tableRegistry } = await import('./mqtt.js');
     await createTableForTopic(baseTopic, tableName);
 
     // Track subscription in mqtt_topics table
@@ -518,29 +543,13 @@ export class mqtt_topics extends BaseClass {
         trackingEntry = await mqttTopicsTable.get(tableName);
         if (!trackingEntry || !trackingEntry.doesExist()) {
           // Create new tracking entry
-          await mqttTopicsTable.put({
-            id: tableName,
-            topic: baseTopic,
-            payload: JSON.stringify({ subscriptionCount: 1, hasRetained: false }),
-            qos: 0,
-            retain: false,
-            timestamp: new Date().toISOString(),
-            client_id: 'system'
-          });
+          await updateMqttTopicsMetadata(tableName, baseTopic, { subscriptionCount: 1, hasRetained: false });
           logger.info(`[MQTT-Broker-Interop-Plugin:Resources]: Created tracking entry for ${tableName}`);
         } else {
           // Increment subscription count
           const metadata = JSON.parse(trackingEntry.payload || '{}');
           metadata.subscriptionCount = (metadata.subscriptionCount || 0) + 1;
-          await mqttTopicsTable.put({
-            id: tableName,
-            topic: baseTopic,
-            payload: JSON.stringify(metadata),
-            qos: 0,
-            retain: false,
-            timestamp: new Date().toISOString(),
-            client_id: 'system'
-          });
+          await updateMqttTopicsMetadata(tableName, baseTopic, metadata);
           logger.info(`[MQTT-Broker-Interop-Plugin:Resources]: Subscription count for ${tableName}: ${metadata.subscriptionCount}`);
         }
       } catch (error) {
@@ -572,17 +581,7 @@ export class mqtt_topics extends BaseClass {
           if (trackingEntry && trackingEntry.doesExist()) {
             const metadata = JSON.parse(trackingEntry.payload || '{}');
             metadata.subscriptionCount = Math.max(0, (metadata.subscriptionCount || 0) - 1);
-
-            await mqttTopicsTable.put({
-              id: tableName,
-              topic: baseTopic,
-              payload: JSON.stringify(metadata),
-              qos: 0,
-              retain: false,
-              timestamp: new Date().toISOString(),
-              client_id: 'system'
-            });
-
+            await updateMqttTopicsMetadata(tableName, baseTopic, metadata);
             logger.info(`[MQTT-Broker-Interop-Plugin:Resources]: Unsubscribed from ${tableName}, remaining: ${metadata.subscriptionCount}`);
 
             // Cleanup table if no subscribers and no retained messages

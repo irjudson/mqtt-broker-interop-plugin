@@ -2,8 +2,6 @@
 // Provides standard MQTT $SYS topics for HarperDB
 
 import { loadConfig } from './config-loader.js';
-// import { setupMqttMonitoring, setupSysTopicsPublisher } from './mqtt.js';
-
 
 export async function handleApplication(scope) {
   const {logger} = scope;
@@ -75,6 +73,3 @@ export async function handleApplication(scope) {
 
   logger.info('[MQTT-Broker-Interop-Plugin:Index]: MQTT Broker Interop Plugin initialized successfully');
 }
-
-// Export resource classes for MQTT topic handling
-// export { SysTopicsResource, WildcardTopicsResource } from './resources.js';
