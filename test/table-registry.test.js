@@ -96,4 +96,37 @@ describe('Table Registry', () => {
       assert.equal(tableRegistry.get('mqtt_home').hasRetained, false);
     });
   });
+
+  describe('table creation with MQTT export', () => {
+    it('creates table with contentType mqtt in export config', async () => {
+      let capturedConfig = null;
+
+      // Mock server.ensureTable to capture the config
+      const mockServer = {
+        ensureTable: async (config) => {
+          capturedConfig = config;
+          return { name: config.name };
+        }
+      };
+
+      // Temporarily replace global server BEFORE importing
+      const originalServer = globalThis.server;
+      globalThis.server = mockServer;
+
+      try {
+        // Import fresh module with query param to bypass cache
+        const timestamp = Date.now();
+        const { createTableForTopic } = await import(`../src/mqtt.js?t=${timestamp}`);
+        await createTableForTopic('test/topic', 'mqtt_test_topic');
+
+        // Verify export config includes contentType
+        assert.ok(capturedConfig, 'config should be captured');
+        assert.ok(capturedConfig.export, 'export config should exist');
+        assert.equal(capturedConfig.export.name, 'test/topic', 'export name should match topic');
+        assert.equal(capturedConfig.export.contentType, 'mqtt', 'contentType should be mqtt');
+      } finally {
+        globalThis.server = originalServer;
+      }
+    });
+  });
 });

@@ -638,7 +638,7 @@ export async function createTableForTopic(topic, tableName) {
           timestamp: { type: 'string' },
           client_id: { type: 'string' }
         },
-        export: { name: topic } // Make this table subscribable as MQTT topic
+        export: { name: topic, contentType: 'mqtt' } // Make this table subscribable as MQTT topic
       });
 
       logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: Table '${tableName}' created successfully`);
