@@ -396,6 +396,9 @@ export class AllTopicsResource {
   }
 }
 
+// Use mqtt_topics table for tracking subscriptions and cleanup metadata
+// Each row represents a dynamic table with its subscription count and retained message status
+
 /**
  * MQTT Topics Resource - intercepts all MQTT publishes/subscribes
  * Routes them to dynamically created topic-specific tables
@@ -420,7 +423,7 @@ export class MqttTopicsResource {
 
     logger.info(`[MQTT-Broker-Interop-Plugin:Resources]: Routing - baseTopic: ${baseTopic}, table: ${tableName}, rowId: ${rowId}`);
 
-    // Create/ensure table exists
+    // Create/ensure table exists (might publish before anyone subscribes)
     const { createTableForTopic } = await import('./mqtt.js');
     await createTableForTopic(baseTopic, tableName);
 
@@ -431,18 +434,46 @@ export class MqttTopicsResource {
       return null;
     }
 
+    // Check if this is a retained message
+    const isRetained = data?.retain || false;
+
     // Insert into the specific table
     await table.put({
       id: rowId,
       topic: path,
       payload: data?.payload || data,
       qos: data?.qos || 0,
-      retain: data?.retain || false,
+      retain: isRetained,
       timestamp: new Date().toISOString(),
       client_id: context?.session?.clientId || context?.user?.username || 'unknown'
     });
 
-    logger.info(`[MQTT-Broker-Interop-Plugin:Resources]: Published to ${tableName}/${rowId}`);
+    // Track retained messages in mqtt_topics for cleanup decisions
+    if (isRetained) {
+      const mqttTopicsTable = globalThis.tables?.mqtt_topics;
+      if (mqttTopicsTable) {
+        try {
+          const trackingEntry = await mqttTopicsTable.get(tableName);
+          if (trackingEntry && trackingEntry.doesExist()) {
+            const metadata = JSON.parse(trackingEntry.payload || '{}');
+            metadata.hasRetained = true;
+            await mqttTopicsTable.put({
+              id: tableName,
+              topic: baseTopic,
+              payload: JSON.stringify(metadata),
+              qos: 0,
+              retain: false,
+              timestamp: new Date().toISOString(),
+              client_id: 'system'
+            });
+          }
+        } catch (error) {
+          logger.warn(`[MQTT-Broker-Interop-Plugin:Resources]: Failed to mark retained in mqtt_topics:`, error);
+        }
+      }
+    }
+
+    logger.info(`[MQTT-Broker-Interop-Plugin:Resources]: Published to ${tableName}/${rowId}${isRetained ? ' (retained)' : ''}`);
     return { success: true, table: tableName, id: rowId };
   }
 
@@ -463,9 +494,49 @@ export class MqttTopicsResource {
 
     logger.info(`[MQTT-Broker-Interop-Plugin:Resources]: Subscribing - baseTopic: ${baseTopic}, table: ${tableName}`);
 
-    // Create/ensure table exists
-    const { createTableForTopic } = await import('./mqtt.js');
+    // Create table on first subscription
+    const { createTableForTopic, tableRegistry } = await import('./mqtt.js');
     await createTableForTopic(baseTopic, tableName);
+
+    // Track subscription in mqtt_topics table
+    const mqttTopicsTable = globalThis.tables?.mqtt_topics;
+    let trackingEntry;
+
+    if (mqttTopicsTable) {
+      try {
+        // Get or create tracking entry
+        trackingEntry = await mqttTopicsTable.get(tableName);
+        if (!trackingEntry || !trackingEntry.doesExist()) {
+          // Create new tracking entry
+          await mqttTopicsTable.put({
+            id: tableName,
+            topic: baseTopic,
+            payload: JSON.stringify({ subscriptionCount: 1, hasRetained: false }),
+            qos: 0,
+            retain: false,
+            timestamp: new Date().toISOString(),
+            client_id: 'system'
+          });
+          logger.info(`[MQTT-Broker-Interop-Plugin:Resources]: Created tracking entry for ${tableName}`);
+        } else {
+          // Increment subscription count
+          const metadata = JSON.parse(trackingEntry.payload || '{}');
+          metadata.subscriptionCount = (metadata.subscriptionCount || 0) + 1;
+          await mqttTopicsTable.put({
+            id: tableName,
+            topic: baseTopic,
+            payload: JSON.stringify(metadata),
+            qos: 0,
+            retain: false,
+            timestamp: new Date().toISOString(),
+            client_id: 'system'
+          });
+          logger.info(`[MQTT-Broker-Interop-Plugin:Resources]: Subscription count for ${tableName}: ${metadata.subscriptionCount}`);
+        }
+      } catch (error) {
+        logger.warn(`[MQTT-Broker-Interop-Plugin:Resources]: Failed to track subscription in mqtt_topics:`, error);
+      }
+    }
 
     // Get the table
     const table = globalThis.tables?.[tableName];
@@ -476,8 +547,55 @@ export class MqttTopicsResource {
 
     // Subscribe to the specific table
     logger.info(`[MQTT-Broker-Interop-Plugin:Resources]: Delegating subscription to table ${tableName}`);
-    for await (const update of table.subscribe(request, context)) {
-      yield update;
+
+    try {
+      for await (const update of table.subscribe(request, context)) {
+        yield update;
+      }
+    } finally {
+      // Cleanup when subscription ends
+      const mqttTopicsTable = globalThis.tables?.mqtt_topics;
+
+      if (mqttTopicsTable) {
+        try {
+          const trackingEntry = await mqttTopicsTable.get(tableName);
+          if (trackingEntry && trackingEntry.doesExist()) {
+            const metadata = JSON.parse(trackingEntry.payload || '{}');
+            metadata.subscriptionCount = Math.max(0, (metadata.subscriptionCount || 0) - 1);
+
+            await mqttTopicsTable.put({
+              id: tableName,
+              topic: baseTopic,
+              payload: JSON.stringify(metadata),
+              qos: 0,
+              retain: false,
+              timestamp: new Date().toISOString(),
+              client_id: 'system'
+            });
+
+            logger.info(`[MQTT-Broker-Interop-Plugin:Resources]: Unsubscribed from ${tableName}, remaining: ${metadata.subscriptionCount}`);
+
+            // Cleanup table if no subscribers and no retained messages
+            if (metadata.subscriptionCount === 0 && !metadata.hasRetained) {
+              logger.info(`[MQTT-Broker-Interop-Plugin:Resources]: Cleaning up unused table ${tableName}`);
+              try {
+                // TODO: Implement table deletion via server API
+                // await server.dropTable(tableName);
+
+                // Remove tracking entry
+                await mqttTopicsTable.delete(tableName);
+                tableRegistry.delete(tableName);
+
+                logger.info(`[MQTT-Broker-Interop-Plugin:Resources]: Cleaned up table ${tableName}`);
+              } catch (error) {
+                logger.warn(`[MQTT-Broker-Interop-Plugin:Resources]: Failed to cleanup table ${tableName}:`, error);
+              }
+            }
+          }
+        } catch (error) {
+          logger.warn(`[MQTT-Broker-Interop-Plugin:Resources]: Failed to update subscription tracking:`, error);
+        }
+      }
     }
   }
 
