@@ -9,5 +9,18 @@ type mqtt_sys_metrics @table @export(name: "$SYS") {
   timestamp: String
 }
 
-# Note: Additional topic tables (mqtt_home, mqtt_sensors, etc.) are created dynamically
-# by the plugin when new MQTT topics are subscribed to.
+# MQTT Topics Registry Table - central table for all MQTT topics
+# Exported as root "/" to catch all non-$SYS MQTT topics
+# Acts as catch-all resource for dynamic topic handling
+type mqtt_topics @table @export(name: "/", contentType: "mqtt") {
+  id: String @primaryKey
+  topic: String @indexed
+  payload: String
+  qos: Int
+  retain: Boolean
+  timestamp: String
+  client_id: String
+}
+
+# Note: Additional topic tables (mqtt_home, mqtt_sensors, etc.) can be created dynamically
+# by the plugin when needed for topic-specific storage.
