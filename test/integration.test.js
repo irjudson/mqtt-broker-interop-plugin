@@ -5,8 +5,7 @@
 
 // IMPORTANT: Setup logger FIRST before importing any modules that use it
 import './helpers/setup-logger.js';
-
-const mqtt = require('mqtt');
+import mqtt from 'mqtt';
 
 // Configuration
 const MQTT_BROKER_URL = process.env.MQTT_URL || 'mqtt://localhost:1883';

@@ -6,7 +6,7 @@ import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert';
 
 // Import all modules
-const modules = '../src/lib/mqtt.js';
+const modules = '../src/mqtt.js';
 
 describe('Module Integration Tests', () => {
   beforeEach(async () => {
@@ -26,8 +26,8 @@ describe('Module Integration Tests', () => {
     });
 
     test('logger maintains consistent prefix', async () => {
-      const logModule = await import('../src/lib/logger.js');
-      const log = logModule.default;
+      const { log } = await import(modules);
+      // log is not a default export, it's imported from mqtt.js
 
       // Mock console to capture output
       const originalTrace = console.trace;
@@ -45,7 +45,7 @@ describe('Module Integration Tests', () => {
   describe('Metrics Module', () => {
     test('metrics singleton works across imports', async () => {
       const { metrics: metrics1 } = await import(modules);
-      const { metrics: metrics2 } = await import('../src/lib/metrics.js');
+      const { metrics: metrics2 } = await import(modules);
 
       // Both should reference the same instance
       metrics1.onConnect('client1', true);
@@ -68,7 +68,7 @@ describe('Module Integration Tests', () => {
     });
 
     test('load average calculation with modular metrics', async () => {
-      const { MqttMetrics } = await import('../src/lib/metrics.js');
+      const { MqttMetrics } = await import(modules);
       const metrics = new MqttMetrics();
 
       // Stop auto-updates for testing
@@ -138,7 +138,7 @@ describe('Module Integration Tests', () => {
     });
 
     test('subscriber tracking prevents race conditions', async () => {
-      const publisherModule = await import('../src/lib/publisher.js');
+      const publisherModule = await import(modules);
 
       // Simulate multiple clients subscribing/unsubscribing rapidly
       const subscribePromises = [];
@@ -188,7 +188,7 @@ describe('Module Integration Tests', () => {
       // Since metrics doesn't update topicRegistry directly,
       // we need to use the event-monitor handlePublishEvent
       // Let's import it directly
-      const eventMonitor = await import('../src/lib/event-monitor.js');
+      const eventMonitor = await import(modules);
       topicRegistry.clear(); // Clear and re-test properly
 
       eventMonitor.handlePublishEvent('sensors/temp', 'client1', { value: 25 });
@@ -244,7 +244,7 @@ describe('Module Integration Tests', () => {
     });
 
     test('memory efficiency improvements work', async () => {
-      const { MqttMetrics } = await import('../src/lib/metrics.js');
+      const { MqttMetrics } = await import(modules);
       const metrics = new MqttMetrics();
 
       // Stop auto-updates

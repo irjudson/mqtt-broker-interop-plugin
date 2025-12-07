@@ -7,7 +7,7 @@ import assert from 'node:assert';
 
 describe('Performance Monitoring', () => {
   test('performance monitor tracks topic resolution', async () => {
-    const { sysTopics, performanceMonitor } = await import('../src/lib/mqtt.js');
+    const { sysTopics, performanceMonitor } = await import('../src/mqtt.js');
 
     // Reset performance metrics
     performanceMonitor.reset();
@@ -27,7 +27,7 @@ describe('Performance Monitoring', () => {
 
   test('performance monitor tracks load calculations', async () => {
     const { MqttMetrics } = await import('../src/lib/metrics.js');
-    const performanceMonitor = (await import('../src/lib/performance.js')).default;
+    const performanceMonitor = (await import('../src/mqtt.js')).default;
 
     const metrics = new MqttMetrics();
     metrics.stopMetricsUpdates(); // Stop automatic updates
@@ -46,7 +46,7 @@ describe('Performance Monitoring', () => {
 
   test('performance monitor tracks memory operations', async () => {
     const { MqttMetrics } = await import('../src/lib/metrics.js');
-    const performanceMonitor = (await import('../src/lib/performance.js')).default;
+    const performanceMonitor = (await import('../src/mqtt.js')).default;
 
     const metrics = new MqttMetrics();
     metrics.stopMetricsUpdates();
@@ -76,7 +76,7 @@ describe('Performance Monitoring', () => {
   });
 
   test('performance monitor tracks subscriber operations', async () => {
-    const { onSysTopicSubscribe, onSysTopicUnsubscribe, performanceMonitor } = await import('../src/lib/mqtt.js');
+    const { onSysTopicSubscribe, onSysTopicUnsubscribe, performanceMonitor } = await import('../src/mqtt.js');
     const { setupSysTopicsPublisher } = await import('../src/lib/publisher.js');
 
     // Setup publisher
@@ -101,7 +101,7 @@ describe('Performance Monitoring', () => {
   });
 
   test('performance report includes improvement descriptions', async () => {
-    const { performanceMonitor } = await import('../src/lib/mqtt.js');
+    const { performanceMonitor } = await import('../src/mqtt.js');
 
     const report = performanceMonitor.getReport();
 
@@ -113,7 +113,7 @@ describe('Performance Monitoring', () => {
   });
 
   test('memory trend tracking works', async () => {
-    const performanceMonitor = (await import('../src/lib/performance.js')).default;
+    const performanceMonitor = (await import('../src/mqtt.js')).default;
 
     // Reset and add some memory snapshots
     performanceMonitor.memorySnapshots = [];
@@ -138,7 +138,7 @@ describe('Performance Monitoring', () => {
   });
 
   test('performance monitor can be reset', async () => {
-    const { performanceMonitor, sysTopics } = await import('../src/lib/mqtt.js');
+    const { performanceMonitor, sysTopics } = await import('../src/mqtt.js');
 
     // Perform some operations
     sysTopics.get({ path: '$SYS/broker/uptime' });

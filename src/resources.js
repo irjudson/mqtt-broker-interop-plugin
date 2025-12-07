@@ -400,13 +400,22 @@ export class AllTopicsResource {
 // Each row represents a dynamic table with its subscription count and retained message status
 
 /**
- * MQTT Topics Resource - intercepts all MQTT publishes/subscribes
+ * MQTT Topics Resource - extends mqtt_topics table to intercept all MQTT publishes/subscribes
  * Routes them to dynamically created topic-specific tables
  */
-export class MqttTopicsResource {
-  async put(request, data, context) {
-    const path = request.path || request.url;
-    logger.info(`[MQTT-Broker-Interop-Plugin:Resources]: MqttTopicsResource PUT - path: ${path}`);
+// Create base class that extends mqtt_topics if tables global exists (HarperDB runtime)
+// Otherwise, create a standalone class for testing
+const BaseClass = (typeof globalThis.tables !== 'undefined' && globalThis.tables?.mqtt_topics)
+  ? globalThis.tables.mqtt_topics
+  : class {};
+
+export class mqtt_topics extends BaseClass {
+  static loadAsInstance = false; // enable the updated API
+
+  async put(target, data, context) {
+    // In the new API, target is the ID/path
+    const path = typeof target === 'string' ? target : (target.path || target.url);
+    logger.info(`[MQTT-Broker-Interop-Plugin:Resources]: mqtt_topics PUT - path: ${path}`);
 
     // Parse topic: "MQTTTest/2fdb0e3c-3679-4ffc-96b1-d3803136a8bf"
     // Base topic: "MQTTTest"
@@ -477,7 +486,8 @@ export class MqttTopicsResource {
     return { success: true, table: tableName, id: rowId };
   }
 
-  async *subscribe(request, context) {
+  async *subscribe(target, context) {
+    const request = target; // target is the request object in the new API
     const path = request.path || request.url;
     logger.info(`[MQTT-Broker-Interop-Plugin:Resources]: MqttTopicsResource SUBSCRIBE - path: ${path}`);
 
@@ -599,16 +609,14 @@ export class MqttTopicsResource {
     }
   }
 
-  async get(request) {
+  async get(target) {
     // Delegate to the same logic as subscribe for queries
+    const request = target;
     const path = request.path || request.url;
     logger.debug(`[MQTT-Broker-Interop-Plugin:Resources]: MqttTopicsResource GET - path: ${path}`);
     return { topic: path, status: 'routed' };
   }
 }
-
-// Export mqtt_topics resource
-export const mqtt_topics = MqttTopicsResource;
 
 // Export as default to catch all unmatched topics
 // This should handle any topic that doesn't have a specific table/resource
