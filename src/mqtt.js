@@ -7,6 +7,9 @@
 const {server} = globalThis;
 const logger = server?.logger || console;
 
+// Access tables from globalThis (it's a global, not an import)
+const tables = globalThis.tables;
+
 // Load average time windows
 const TIME_WINDOWS = {
   ONE_MIN: { ms: 60 * 1000, minutes: 1 },
@@ -510,9 +513,16 @@ export function upsertSysMetric(topic, value) {
   }
 
   try {
+    // Remove $SYS/ prefix since the table is exported with @export(name: "$SYS")
+    // HarperDB uses the 'id' field (primary key) as the MQTT topic path
+    // So we store the relative path in 'id' and full path in 'topic' for queries
+    const relativePath = topic.startsWith('$SYS/') ? topic.substring(5) : topic;
+
+    logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: Upserting $SYS metric - topic='${topic}', relativePath='${relativePath}', value='${value}'`);
+
     sysMetricsTable.put({
-      id: topic,
-      topic: topic,
+      id: relativePath,  // Relative path as ID (e.g., "broker/clients/connected")
+      topic: topic,  // Full path for backwards compatibility with queries
       value: String(value),
       timestamp: new Date().toISOString()
     });
@@ -541,39 +551,44 @@ export function setSysMetricsTable(table) {
  */
 export async function createTableForTopic(topic, tableName) {
   // Check if table exists in global tables
-  const table = globalThis.tables?.[tableName];
-  if (table) {
-    return table;
+  const existingTable = globalThis.tables?.[tableName];
+  if (existingTable) {
+    logger.debug(`[MQTT-Broker-Interop-Plugin:MQTT]: Table '${tableName}' already exists`);
+    return existingTable;
   }
 
-  // Table doesn't exist - create it dynamically
   logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: Creating table '${tableName}' for topic '${topic}'`);
 
   try {
-    // Use HarperDB's table creation API
-    if (server?.ensureTable) {
-      const newTable = await server.ensureTable({
-        name: tableName,
-        schema: {
-          id: { type: 'string', primaryKey: true },
-          topic: { type: 'string', indexed: true },
-          payload: { type: 'string' },
-          qos: { type: 'number' },
-          retain: { type: 'boolean' },
-          timestamp: { type: 'string' },
-          client_id: { type: 'string' }
-        },
-        export: { name: topic, contentType: 'mqtt' } // Make this table subscribable as MQTT topic
-      });
+    // Use an existing table's operation() method to create the new table
+    // Pick any existing table (e.g., mqtt_topics) and call its operation() method
+    const anyTable = tables.mqtt_topics || globalThis.tables?.mqtt_topics;
 
-      logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: Table '${tableName}' created successfully`);
-      return newTable;
-    } else {
-      logger.error(`[MQTT-Broker-Interop-Plugin:MQTT]: Cannot create table - server.ensureTable not available`);
+    if (!anyTable) {
+      logger.error(`[MQTT-Broker-Interop-Plugin:MQTT]: No existing table found to call operation() on`);
       return null;
     }
+
+    await anyTable.operation({
+      operation: 'create_table',
+      database: 'data',
+      table: tableName,
+      primary_key: 'id'
+    });
+
+    logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: Table '${tableName}' created successfully`);
+
+    // Return the newly created table
+    return globalThis.tables?.[tableName] || tables[tableName];
   } catch (error) {
+    // Ignore "already exists" errors (idempotent)
+    if (error.message && error.message.includes('already exists')) {
+      logger.debug(`[MQTT-Broker-Interop-Plugin:MQTT]: Table '${tableName}' already exists (caught during creation)`);
+      return globalThis.tables?.[tableName] || databases.data[tableName];
+    }
+
     logger.error(`[MQTT-Broker-Interop-Plugin:MQTT]: Failed to create table '${tableName}':`, error);
+    logger.error(`[MQTT-Broker-Interop-Plugin:MQTT]: Error message: ${error.message}`);
     return null;
   }
 }
@@ -585,32 +600,42 @@ export async function createTableForTopic(topic, tableName) {
  */
 export async function writeMessageToTable(tableName, message) {
   try {
-    // Get or create table entry in registry
-    let tableEntry = tableRegistry.get(tableName);
-    if (!tableEntry) {
-      await createTableForTopic(message.topic, tableName);
-      tableEntry = { tableName, subscriptionCount: 0, hasRetained: false };
-      tableRegistry.set(tableName, tableEntry);
-    }
-
-    // Get table from global tables
-    const table = globalThis.tables?.[tableName];
-    if (!table) {
-      logger.trace(`[MQTT-Broker-Interop-Plugin:MQTT]: No table '${tableName}' for topic '${message.topic}'`);
+    // Write directly to mqtt_topics table
+    const mqttTopicsTable = globalThis.tables?.mqtt_topics;
+    if (!mqttTopicsTable) {
+      logger.debug(`[MQTT-Broker-Interop-Plugin:MQTT]: mqtt_topics table not available`);
       return;
     }
 
-    await table.put({
-      id: generateMessageId(),
+    // Get existing record to preserve subscription_count
+    let subscriptionCount = 0;
+    try {
+      const existing = await mqttTopicsTable.get(message.topic);
+      if (existing && existing.doesExist()) {
+        subscriptionCount = existing.subscription_count || 0;
+      }
+    } catch (error) {
+      // Ignore, will create new record
+    }
+
+    // Convert payload to string if it's a Buffer
+    const payloadStr = Buffer.isBuffer(message.payload)
+      ? message.payload.toString()
+      : message.payload;
+
+    // id field must be the topic path for MQTT routing (HarperDB uses id as MQTT topic)
+    await mqttTopicsTable.put({
+      id: message.topic,  // Use topic path as ID for MQTT routing
       topic: message.topic,
-      payload: message.payload,
+      payload: payloadStr,
       qos: message.qos,
       retain: message.retain,
-      timestamp: new Date(),
-      client_id: message.client_id
+      timestamp: new Date().toISOString(),
+      client_id: message.client_id,
+      subscription_count: subscriptionCount
     });
 
-    logger.trace(`[MQTT-Broker-Interop-Plugin:MQTT]: Wrote to table '${tableName}'`);
+    logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: Wrote message to mqtt_topics - topic: ${message.topic}, payload: ${payloadStr}`);
   } catch (error) {
     logger.error(`[MQTT-Broker-Interop-Plugin:MQTT]: Write error: ${error.message}`);
   }
@@ -662,12 +687,18 @@ export function setupMqttMonitoring(server, _logger, _sysInterval) {
   logger.debug('[MQTT-Broker-Interop-Plugin:MQTT]: MQTT events object obtained');
 
   // Monitor client connections
-  mqttEvents.on('connected', (session, _socket) => {
+  mqttEvents.on('connected', (session, socket) => {
     const clientId = session?.sessionId;
     const username = session?.user?.username;
     // In MQTT, clean flag determines if session is persistent (clean=false means persistent)
     const clean = session?.clean ?? true; // Default to true (non-persistent) if not specified
     logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: Client connected - clientId: ${clientId}, username: ${username}, clean: ${clean}`);
+
+    // REMOVED: Wrapping session.publish breaks HarperDB's MQTT validation
+    // session.publish is for OUTGOING messages (table → MQTT subscribers)
+    // We need to intercept INCOMING messages (MQTT publishers → table) differently
+    // For now, we rely on HarperDB's native @export to handle subscriptions
+
     metrics.onConnect(clientId, !clean); // !clean = persistent
   });
 
@@ -686,49 +717,10 @@ export function setupMqttMonitoring(server, _logger, _sysInterval) {
     metrics.onDisconnect(clientId, persistent);
   });
 
-  // Monitor publish events (messages received from clients)
-  mqttEvents.on('publish', (packet, session) => {
-    const topic = packet?.topic;
-    const payload = packet?.payload;
-    const clientId = session?.sessionId;
-    const qos = packet?.qos || 0;
-    const retain = packet?.retain || false;
-    const byteCount = payload ? Buffer.byteLength(payload) : 0;
-    logger.debug(`[MQTT-Broker-Interop-Plugin:MQTT]: Publish received - clientId: ${clientId}, topic: ${topic}, bytes: ${byteCount}`);
-    metrics.onPublishReceived({ topic, payload }, byteCount);
-
-    // Skip $SYS topics - those are managed separately
-    if (topic && topic.startsWith('$SYS/')) {
-      logger.trace('[MQTT-Broker-Interop-Plugin:MQTT]: Skipping $SYS topic publish');
-      return;
-    }
-
-    // Track topic in registry (exclude $SYS topics from general registry)
-    if (topic) {
-      topicRegistry.add(topic);
-      logger.trace(`[MQTT-Broker-Interop-Plugin:MQTT]: Topic added to registry: ${topic}`);
-
-      // Write message to appropriate table
-      const tableName = getTableNameForTopic(topic);
-      // Fire-and-forget for performance - don't await to avoid blocking MQTT event processing
-      // Explicit error handling to avoid unhandled promise rejections
-      writeMessageToTable(tableName, {
-        topic,
-        payload,
-        qos,
-        retain,
-        client_id: clientId
-      }).catch(error => {
-        logger.error(`[MQTT-Broker-Interop-Plugin:MQTT]: Failed to persist message to '${tableName}':`, error);
-      });
-
-      // Update retained message tracking
-      if (retain) {
-        logger.debug(`[MQTT-Broker-Interop-Plugin:MQTT]: Retained message published to topic '${topic}'`);
-        updateRetainedStatus(tableName, true);
-      }
-    }
-  });
+  // NOTE: HarperDB does NOT have a 'publish' event
+  // Only these events exist: connection, connected, auth-failed, disconnected
+  // See: https://docs.harperdb.io/docs/developers/applications/mqtt#mqtt-events
+  // MQTT publishes are intercepted via server.mqtt.addTopicHandler('#') in index.js instead
 
   // Monitor subscription events
   mqttEvents.on('subscribe', (subscriptions, session) => {
@@ -750,6 +742,52 @@ export function setupMqttMonitoring(server, _logger, _sysInterval) {
           metrics.onSubscribe(clientId, topic);
           onSysTopicSubscribe(clientId, topic);
           return;
+        }
+
+        // Update subscription_count for non-wildcard topics in mqtt_topics table
+        if (!topic.includes('#') && !topic.includes('+')) {
+          const mqttTopicsTable = globalThis.tables?.mqtt_topics;
+          if (mqttTopicsTable) {
+            setImmediate(async () => {
+              try {
+                const existing = await mqttTopicsTable.get(topic);
+                let subscriptionCount = 0;
+                let existingData = {};
+
+                if (existing) {
+                  const doesExist = typeof existing.doesExist === 'function' ? existing.doesExist() : existing.doesExist;
+                  if (doesExist || (existing.id && existing.id === topic)) {
+                    subscriptionCount = (existing.subscription_count || 0);
+                    existingData = {
+                      payload: existing.payload,
+                      qos: existing.qos,
+                      retain: existing.retain,
+                      client_id: existing.client_id,
+                      timestamp: existing.timestamp
+                    };
+                  }
+                }
+
+                subscriptionCount++;
+
+                await mqttTopicsTable.put({
+                  id: topic,
+                  topic: topic,
+                  subscription_count: subscriptionCount,
+                  ...existingData,
+                  payload: existingData.payload || '',
+                  qos: existingData.qos ?? 0,
+                  retain: existingData.retain ?? false,
+                  timestamp: existingData.timestamp || new Date().toISOString(),
+                  client_id: existingData.client_id || clientId
+                });
+
+                logger.debug(`[MQTT-Broker-Interop-Plugin:MQTT]: Updated subscription_count for ${topic}: ${subscriptionCount}`);
+              } catch (error) {
+                logger.error(`[MQTT-Broker-Interop-Plugin:MQTT]: Failed to update subscription_count for ${topic}:`, error);
+              }
+            });
+          }
         }
 
         // Handle wildcards - extract base topic and create table for it
@@ -831,6 +869,37 @@ export function setupMqttMonitoring(server, _logger, _sysInterval) {
         // Skip empty topics
         if (!topic) {
           return;
+        }
+
+        // Decrement subscription_count for this topic
+        const mqttTopicsTable = globalThis.tables?.mqtt_topics;
+        if (mqttTopicsTable) {
+          setImmediate(async () => {
+            try {
+              const existing = await mqttTopicsTable.get(topic);
+              if (existing && existing.doesExist && existing.doesExist()) {
+                let subscriptionCount = (existing.subscription_count || 0);
+                if (subscriptionCount > 0) {
+                  subscriptionCount--;
+
+                  await mqttTopicsTable.put({
+                    id: topic,
+                    topic: topic,
+                    payload: existing.payload,
+                    qos: existing.qos,
+                    retain: existing.retain,
+                    timestamp: existing.timestamp,
+                    client_id: existing.client_id,
+                    subscription_count: subscriptionCount
+                  });
+
+                  logger.debug(`[MQTT-Broker-Interop-Plugin:MQTT]: Decremented subscription_count for ${topic}: ${subscriptionCount}`);
+                }
+              }
+            } catch (error) {
+              logger.error(`[MQTT-Broker-Interop-Plugin:MQTT]: Failed to decrement subscription_count for ${topic}:`, error);
+            }
+          });
         }
 
         // Decrement subscription count
