@@ -7,7 +7,7 @@ import './helpers/setup-logger.js';
 
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert';
-import { topicRegistry, setupMqttMonitoring, createTableForTopic } from '../src/mqtt.js';
+import { topicRegistry, tableRegistry, setupMqttMonitoring, createTableForTopic } from '../src/mqtt.js';
 import { SysTopicsResource, WildcardTopicsResource } from '../src/resources.js';
 
 describe('Wildcard Topics', () => {
@@ -175,34 +175,58 @@ describe('Wildcard Topics', () => {
       // 2. Table is created with contentType: 'mqtt'
       // 3. resources.getMatch() can find the table
 
+      // Clear table registry to ensure clean state
+      tableRegistry.clear();
+
+      let ensureTableCalled = false;
       const mockServer = {
         ensureTable: async (config) => {
+          ensureTableCalled = true;
           // Verify contentType is set
           assert.equal(config.export?.contentType, 'mqtt');
           return { name: config.name };
         }
       };
 
+      const originalServer = globalThis.server;
       globalThis.server = mockServer;
+      try {
+        let subscribeHandler;
+        let subscribeWasCalled = false;
 
-      // Mock MQTT server with events
-      const mockMqttServer = {
-        mqtt: {
-          events: {
-            on: (event, handler) => {
-              if (event === 'subscribe') {
-                // Simulate subscription event
-                handler([{ topic: 'integration/test/#' }], { sessionId: 'test-client' });
+        // Mock MQTT server with events
+        const mockMqttServer = {
+          mqtt: {
+            events: {
+              on: (event, handler) => {
+                if (event === 'subscribe') {
+                  subscribeHandler = handler;
+                }
               }
             }
           }
+        };
+
+        setupMqttMonitoring(mockMqttServer, console, 10);
+
+        // Manually trigger the subscription event after setup
+        if (subscribeHandler) {
+          subscribeHandler([{ topic: 'integration/test/#' }], { sessionId: 'test-client' });
+          subscribeWasCalled = true;
         }
-      };
 
-      setupMqttMonitoring(mockMqttServer, console, 10);
+        // Give async operations a moment to complete
+        await new Promise(resolve => setTimeout(resolve, 10));
 
-      // If we get here without errors, the table was created successfully
-      assert.ok(true, 'subscription handled without error');
+        // Verify subscription handler was invoked and tableRegistry was updated
+        assert.ok(subscribeWasCalled, 'subscribe handler should have been called');
+        // The handler should have added a table to the registry
+        // For wildcard 'integration/test/#', the base topic is 'integration' which maps to mqtt_messages
+        assert.ok(tableRegistry.size > 0, 'tableRegistry should have at least one table');
+        assert.ok(tableRegistry.has('mqtt_messages'), 'tableRegistry should have mqtt_messages table');
+      } finally {
+        globalThis.server = originalServer;
+      }
     });
   });
 });
