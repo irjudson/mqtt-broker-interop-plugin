@@ -396,6 +396,102 @@ export class AllTopicsResource {
   }
 }
 
+/**
+ * MQTT Topics Resource - intercepts all MQTT publishes/subscribes
+ * Routes them to dynamically created topic-specific tables
+ */
+export class MqttTopicsResource {
+  async put(request, data, context) {
+    const path = request.path || request.url;
+    logger.info(`[MQTT-Broker-Interop-Plugin:Resources]: MqttTopicsResource PUT - path: ${path}`);
+
+    // Parse topic: "MQTTTest/2fdb0e3c-3679-4ffc-96b1-d3803136a8bf"
+    // Base topic: "MQTTTest"
+    // Row ID: "2fdb0e3c-3679-4ffc-96b1-d3803136a8bf"
+    const segments = path.split('/').filter(s => s);
+    if (segments.length === 0) {
+      logger.warn('[MQTT-Broker-Interop-Plugin:Resources]: Empty path in PUT');
+      return null;
+    }
+
+    const baseTopic = segments[0];
+    const rowId = segments.slice(1).join('/') || baseTopic;
+    const tableName = `mqtt_${baseTopic.toLowerCase().replace(/[^a-z0-9_]/g, '_')}`;
+
+    logger.info(`[MQTT-Broker-Interop-Plugin:Resources]: Routing - baseTopic: ${baseTopic}, table: ${tableName}, rowId: ${rowId}`);
+
+    // Create/ensure table exists
+    const { createTableForTopic } = await import('./mqtt.js');
+    await createTableForTopic(baseTopic, tableName);
+
+    // Get the table
+    const table = globalThis.tables?.[tableName];
+    if (!table) {
+      logger.error(`[MQTT-Broker-Interop-Plugin:Resources]: Failed to create/access table ${tableName}`);
+      return null;
+    }
+
+    // Insert into the specific table
+    await table.put({
+      id: rowId,
+      topic: path,
+      payload: data?.payload || data,
+      qos: data?.qos || 0,
+      retain: data?.retain || false,
+      timestamp: new Date().toISOString(),
+      client_id: context?.session?.clientId || context?.user?.username || 'unknown'
+    });
+
+    logger.info(`[MQTT-Broker-Interop-Plugin:Resources]: Published to ${tableName}/${rowId}`);
+    return { success: true, table: tableName, id: rowId };
+  }
+
+  async *subscribe(request, context) {
+    const path = request.path || request.url;
+    logger.info(`[MQTT-Broker-Interop-Plugin:Resources]: MqttTopicsResource SUBSCRIBE - path: ${path}`);
+
+    // Parse subscription pattern: "MQTTTest/#"
+    // Base topic: "MQTTTest"
+    const segments = path.split('/').filter(s => s && s !== '#' && s !== '+');
+    if (segments.length === 0) {
+      logger.warn('[MQTT-Broker-Interop-Plugin:Resources]: Empty path in SUBSCRIBE');
+      return;
+    }
+
+    const baseTopic = segments[0];
+    const tableName = `mqtt_${baseTopic.toLowerCase().replace(/[^a-z0-9_]/g, '_')}`;
+
+    logger.info(`[MQTT-Broker-Interop-Plugin:Resources]: Subscribing - baseTopic: ${baseTopic}, table: ${tableName}`);
+
+    // Create/ensure table exists
+    const { createTableForTopic } = await import('./mqtt.js');
+    await createTableForTopic(baseTopic, tableName);
+
+    // Get the table
+    const table = globalThis.tables?.[tableName];
+    if (!table) {
+      logger.error(`[MQTT-Broker-Interop-Plugin:Resources]: Failed to create/access table ${tableName}`);
+      return;
+    }
+
+    // Subscribe to the specific table
+    logger.info(`[MQTT-Broker-Interop-Plugin:Resources]: Delegating subscription to table ${tableName}`);
+    for await (const update of table.subscribe(request, context)) {
+      yield update;
+    }
+  }
+
+  async get(request) {
+    // Delegate to the same logic as subscribe for queries
+    const path = request.path || request.url;
+    logger.debug(`[MQTT-Broker-Interop-Plugin:Resources]: MqttTopicsResource GET - path: ${path}`);
+    return { topic: path, status: 'routed' };
+  }
+}
+
+// Export mqtt_topics resource
+export const mqtt_topics = MqttTopicsResource;
+
 // Export as default to catch all unmatched topics
 // This should handle any topic that doesn't have a specific table/resource
 export default AllTopicsResource;
