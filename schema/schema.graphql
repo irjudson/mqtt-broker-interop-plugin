@@ -11,9 +11,7 @@ type mqtt_sys_metrics @table @export(name: "$SYS") {
 
 # MQTT Topics Registry Table - central table for all MQTT topics
 # Exported as root "/" to catch all non-$SYS MQTT topics
-# Each row represents a topic with its latest message
-# subscription_count tracks active subscriptions for cleanup
-# @export with payloadProperty specifies which field contains the MQTT message payload
+# Each row represents a topic 
 type mqtt_topics @table @export(name: "/") {
   id: String @primaryKey
 }
