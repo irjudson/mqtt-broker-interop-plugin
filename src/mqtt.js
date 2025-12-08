@@ -757,7 +757,7 @@ export async function createTableForTopic(topic, tableName) {
       logger.debug(
         `[MQTT-Broker-Interop-Plugin:MQTT]: Table '${tableName}' already exists (caught during creation)`
       );
-      return globalThis.tables?.[tableName] || databases.data[tableName];
+      return globalThis.tables?.[tableName] || globalThis.databases?.data?.[tableName];
     }
 
     logger.error(
@@ -794,7 +794,7 @@ export async function writeMessageToTable(tableName, message) {
       if (existing && existing.doesExist()) {
         subscriptionCount = existing.subscription_count || 0;
       }
-    } catch (error) {
+    } catch {
       // Ignore, will create new record
     }
 
@@ -848,7 +848,7 @@ export function updateRetainedStatus(tableName, hasRetained) {
  * Cleanup table tracking when no longer needed
  * @param {string} tableName - Table name to cleanup
  */
-export async function cleanupTable(tableName) {
+export function cleanupTable(tableName) {
   logger.debug(
     `[MQTT-Broker-Interop-Plugin:MQTT]: Cleaning up tracking for table '${tableName}'`
   );
@@ -880,7 +880,7 @@ export function setupMqttMonitoring(server, _logger) {
   );
 
   // Monitor client connections
-  mqttEvents.on('connected', (session, socket) => {
+  mqttEvents.on('connected', (session, _socket) => {
     const clientId = session?.sessionId;
     const username = session?.user?.username;
     // In MQTT, clean flag determines if session is persistent (clean=false means persistent)
@@ -945,7 +945,7 @@ export function setupMqttMonitoring(server, _logger) {
             `[MQTT-Broker-Interop-Plugin:MQTT]: $SYS topic subscription detected - clientId: ${clientId}, topic: ${topic}`
           );
           metrics.onSubscribe(clientId, topic);
-          onSysTopicSubscribe(clientId, topic);
+          // Note: onSysTopicSubscribe removed with polling code
           return;
         }
 
@@ -953,7 +953,7 @@ export function setupMqttMonitoring(server, _logger) {
         if (!topic.includes('#') && !topic.includes('+')) {
           const mqttTopicsTable = globalThis.tables?.mqtt_topics;
           if (mqttTopicsTable) {
-            setImmediate(async () => {
+            setTimeout(async () => {
               try {
                 const existing = await mqttTopicsTable.get(topic);
                 let subscriptionCount = 0;
@@ -1087,7 +1087,7 @@ export function setupMqttMonitoring(server, _logger) {
           logger.info(
             `[MQTT-Broker-Interop-Plugin:MQTT]: $SYS topic unsubscription detected - clientId: ${clientId}, topic: ${topic}`
           );
-          onSysTopicUnsubscribe(clientId, topic);
+          // Note: onSysTopicUnsubscribe removed with polling code
           return;
         }
 
@@ -1107,7 +1107,7 @@ export function setupMqttMonitoring(server, _logger) {
         // Decrement subscription_count for this topic
         const mqttTopicsTable = globalThis.tables?.mqtt_topics;
         if (mqttTopicsTable) {
-          setImmediate(async () => {
+          setTimeout(async () => {
             try {
               const existing = await mqttTopicsTable.get(topic);
               if (existing && existing.doesExist && existing.doesExist()) {

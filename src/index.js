@@ -18,7 +18,7 @@ export async function handleApplication(scope) {
   );
 
   // Load and normalize configuration
-  const fullConfig = loadConfig(options);
+  loadConfig(options);
   logger.info('[MQTT-Broker-Interop-Plugin:Index]: Configuration loaded');
 
   logger.info(

@@ -10,9 +10,7 @@ import assert from 'node:assert';
 import {
   topicRegistry,
   tableRegistry,
-  setupMqttMonitoring,
-  createTableForTopic,
-  metrics
+  setupMqttMonitoring
 } from '../src/mqtt.js';
 import { SysTopicsResource, WildcardTopicsResource } from '../src/resources.js';
 
@@ -203,10 +201,8 @@ describe('Wildcard Topics', () => {
       // Clear table registry to ensure clean state
       tableRegistry.clear();
 
-      let ensureTableCalled = false;
       const mockServer = {
         ensureTable: async (config) => {
-          ensureTableCalled = true;
           // Verify contentType is set
           assert.equal(config.export?.contentType, 'mqtt');
           return { name: config.name };

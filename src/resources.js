@@ -413,7 +413,7 @@ export class DynamicTopicsResource {
  * matching to find the appropriate tables
  */
 export class AllTopicsResource {
-  async get(request) {
+  get(request) {
     const topic = request.path || request.url;
     logger.trace(
       `[MQTT-Broker-Interop-Plugin:Resources]: AllTopicsResource GET - ${topic}`
