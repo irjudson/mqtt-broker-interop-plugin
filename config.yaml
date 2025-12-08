@@ -21,6 +21,4 @@ mqtt:
   webSocket: true # will also enable WS support through the default HTTP interface/port
   mTLS: false
   requireAuthentication: false
-  # Interval in seconds for publishing $SYS topic updates
-  sys_interval: 10
 

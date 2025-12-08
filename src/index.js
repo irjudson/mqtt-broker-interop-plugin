@@ -17,10 +17,7 @@ export async function handleApplication(scope) {
 
   // Load and normalize configuration
   const fullConfig = loadConfig(options);
-
-  // Extract MQTT configuration
-  const sysInterval = fullConfig?.mqtt?.sys_interval || 10;
-  logger.info(`[MQTT-Broker-Interop-Plugin:Index]: Configuration loaded - sys_interval: ${sysInterval}s`);
+  logger.info('[MQTT-Broker-Interop-Plugin:Index]: Configuration loaded');
 
   logger.info('[MQTT-Broker-Interop-Plugin:Index]: Initializing MQTT Broker Interop Plugin');
 
@@ -57,7 +54,7 @@ export async function handleApplication(scope) {
   if (server?.mqtt?.events) {
     logger.info('[MQTT-Broker-Interop-Plugin:Index]: MQTT events available, setting up event monitoring on worker thread');
     const { setupMqttMonitoring } = await import('./mqtt.js');
-    setupMqttMonitoring(server, logger, sysInterval);
+    setupMqttMonitoring(server, logger);
   } else {
     logger.debug('[MQTT-Broker-Interop-Plugin:Index]: MQTT events not available on this thread');
   }

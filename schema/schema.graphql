@@ -14,15 +14,8 @@ type mqtt_sys_metrics @table @export(name: "$SYS") {
 # Each row represents a topic with its latest message
 # subscription_count tracks active subscriptions for cleanup
 # @export with payloadProperty specifies which field contains the MQTT message payload
-type mqtt_topics @table @export(name: "/", requireAuthentication: false, payloadProperty: "payload") {
+type mqtt_topics @table @export(name: "/") {
   id: String @primaryKey
-  topic: String @indexed
-  payload: String
-  qos: Int
-  retain: Boolean
-  timestamp: String
-  client_id: String
-  subscription_count: Int
 }
 
 # Note: Additional topic tables (mqtt_home, mqtt_sensors, etc.) can be created dynamically
