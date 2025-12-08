@@ -10,13 +10,13 @@ Import this helper **before** any other modules that use `server.logger`:
 
 ```javascript
 // IMPORTANT: Setup logger FIRST before importing any modules that use it
-import './helpers/setup-logger.js';
+import "./helpers/setup-logger.js";
 
-import { describe, it } from 'node:test';
-import { MqttMetrics } from '../src/mqtt.js';
+import { describe, it } from "node:test";
+import { MqttMetrics } from "../src/mqtt.js";
 
-describe('MyTest', () => {
-  it('works with logging', () => {
+describe("MyTest", () => {
+  it("works with logging", () => {
     // server.logger is now available globally
     const metrics = new MqttMetrics();
     // ...
@@ -37,6 +37,7 @@ describe('MyTest', () => {
 ### Log Levels
 
 The mock logger supports all standard log levels:
+
 - `trace` - Very detailed debugging
 - `debug` - Debugging information
 - `info` - Informational messages
@@ -49,7 +50,7 @@ The mock logger supports all standard log levels:
 By default, the logger runs in silent mode for tests. To see log output during tests:
 
 ```javascript
-import { setupGlobalLogger } from './helpers/setup-logger.js';
+import { setupGlobalLogger } from "./helpers/setup-logger.js";
 
 // Enable logging output
 setupGlobalLogger(false);

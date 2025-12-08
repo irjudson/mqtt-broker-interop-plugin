@@ -16,7 +16,10 @@ describe('getTableNameForTopic', () => {
     });
 
     it('extracts first segment for deep hierarchy', () => {
-      assert.equal(getTableNameForTopic('home/living/temperature'), 'mqtt_home');
+      assert.equal(
+        getTableNameForTopic('home/living/temperature'),
+        'mqtt_home'
+      );
       assert.equal(getTableNameForTopic('a/b/c/d/e'), 'mqtt_a');
     });
 

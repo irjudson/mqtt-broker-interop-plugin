@@ -12,7 +12,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // Access global server and logger
-const {server} = globalThis;
+const { server } = globalThis;
 const logger = server?.logger || console;
 
 /**
@@ -23,7 +23,9 @@ const logger = server?.logger || console;
  */
 export function loadConfig(configPath = null) {
   try {
-    logger.debug('[MQTT-Broker-Interop-Plugin:ConfigLoader]: Loading configuration');
+    logger.debug(
+      '[MQTT-Broker-Interop-Plugin:ConfigLoader]: Loading configuration'
+    );
     let config;
     let source;
 
@@ -31,19 +33,25 @@ export function loadConfig(configPath = null) {
     if (configPath === null || configPath === undefined) {
       // Default to config.yaml in project root
       const path = join(__dirname, '..', 'config.yaml');
-      logger.debug(`[MQTT-Broker-Interop-Plugin:ConfigLoader]: Loading config from default path: ${path}`);
+      logger.debug(
+        `[MQTT-Broker-Interop-Plugin:ConfigLoader]: Loading config from default path: ${path}`
+      );
       const fileContent = readFileSync(path, 'utf8');
       config = parse(fileContent);
       source = path;
     } else if (typeof configPath === 'string') {
       // Path to config file
-      logger.debug(`[MQTT-Broker-Interop-Plugin:ConfigLoader]: Loading config from: ${configPath}`);
+      logger.debug(
+        `[MQTT-Broker-Interop-Plugin:ConfigLoader]: Loading config from: ${configPath}`
+      );
       const fileContent = readFileSync(configPath, 'utf8');
       config = parse(fileContent);
       source = configPath;
     } else if (typeof configPath === 'object') {
       // Config object passed directly (for testing)
-      logger.debug('[MQTT-Broker-Interop-Plugin:ConfigLoader]: Using config object passed directly');
+      logger.debug(
+        '[MQTT-Broker-Interop-Plugin:ConfigLoader]: Using config object passed directly'
+      );
       // Check if it's an options object with 'config' property
       const { config: nestedConfig } = configPath;
       if (nestedConfig) {
@@ -53,22 +61,30 @@ export function loadConfig(configPath = null) {
       }
       source = 'object';
     } else {
-      logger.error('[MQTT-Broker-Interop-Plugin:ConfigLoader]: Invalid configPath type');
+      logger.error(
+        '[MQTT-Broker-Interop-Plugin:ConfigLoader]: Invalid configPath type'
+      );
       throw new Error('configPath must be a string, object, or null');
     }
 
     if (!config) {
-      logger.error('[MQTT-Broker-Interop-Plugin:ConfigLoader]: Failed to parse configuration');
+      logger.error(
+        '[MQTT-Broker-Interop-Plugin:ConfigLoader]: Failed to parse configuration'
+      );
       throw new Error('Failed to parse configuration');
     }
 
-    logger.info(`[MQTT-Broker-Interop-Plugin:ConfigLoader]: Successfully loaded config from: ${source}`);
+    logger.info(
+      `[MQTT-Broker-Interop-Plugin:ConfigLoader]: Successfully loaded config from: ${source}`
+    );
 
     // Normalize to multi-table format if needed
     // return normalizeConfig(config);
-    return(config);
+    return config;
   } catch (error) {
-    logger.error(`[MQTT-Broker-Interop-Plugin:ConfigLoader]: Configuration loading failed: ${error.message}`);
+    logger.error(
+      `[MQTT-Broker-Interop-Plugin:ConfigLoader]: Configuration loading failed: ${error.message}`
+    );
     throw new Error(`Failed to load configuration: ${error.message}`);
   }
 }

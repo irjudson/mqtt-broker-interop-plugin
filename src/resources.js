@@ -4,7 +4,7 @@
 import { SysTopics, metrics, topicRegistry } from './mqtt.js';
 
 // Access global server and logger
-const {server} = globalThis;
+const { server } = globalThis;
 const logger = server?.logger || console;
 
 // Create singleton instance of SysTopics
@@ -90,17 +90,21 @@ export class SysTopicsResource {
    */
   get(request) {
     const topic = request.path || request.url;
-    logger.trace(`[MQTT-Broker-Interop-Plugin:Resources]: SysTopicsResource GET request - topic: ${topic}`);
+    logger.trace(
+      `[MQTT-Broker-Interop-Plugin:Resources]: SysTopicsResource GET request - topic: ${topic}`
+    );
 
     // Handle wildcard /#  - all non-$SYS topics
     if (topic === '/#' || topic === '#') {
       const allTopics = Array.from(topicRegistry);
-      logger.debug(`[MQTT-Broker-Interop-Plugin:Resources]: Returning all non-$SYS topics - count: ${allTopics.length}`);
+      logger.debug(
+        `[MQTT-Broker-Interop-Plugin:Resources]: Returning all non-$SYS topics - count: ${allTopics.length}`
+      );
 
       return {
         pattern: '/#',
         count: allTopics.length,
-        topics: allTopics.map(t => ({
+        topics: allTopics.map((t) => ({
           topic: t,
           timestamp: new Date().toISOString()
         }))
@@ -112,30 +116,36 @@ export class SysTopicsResource {
       const result = {
         pattern: '$SYS/#',
         count: ALL_SYS_TOPICS.length,
-        topics: ALL_SYS_TOPICS.map(t => ({
+        topics: ALL_SYS_TOPICS.map((t) => ({
           topic: t,
           value: sysTopics.get({ path: t }),
           timestamp: new Date().toISOString()
-        })).filter(item => item.value !== null)
+        })).filter((item) => item.value !== null)
       };
-      logger.debug(`[MQTT-Broker-Interop-Plugin:Resources]: Returning all $SYS topics - count: ${result.topics.length}`);
+      logger.debug(
+        `[MQTT-Broker-Interop-Plugin:Resources]: Returning all $SYS topics - count: ${result.topics.length}`
+      );
       return result;
     }
 
     // Handle partial $SYS wildcards like $SYS/broker/clients/#
     if (topic && topic.startsWith('$SYS/') && topic.includes('#')) {
       const prefix = topic.replace('/#', '/').replace('#', '');
-      const matchingTopics = ALL_SYS_TOPICS.filter(t => t.startsWith(prefix));
-      logger.debug(`[MQTT-Broker-Interop-Plugin:Resources]: Partial $SYS wildcard - prefix: ${prefix}, matches: ${matchingTopics.length}`);
+      const matchingTopics = ALL_SYS_TOPICS.filter((t) => t.startsWith(prefix));
+      logger.debug(
+        `[MQTT-Broker-Interop-Plugin:Resources]: Partial $SYS wildcard - prefix: ${prefix}, matches: ${matchingTopics.length}`
+      );
 
       return {
         pattern: topic,
         count: matchingTopics.length,
-        topics: matchingTopics.map(t => ({
-          topic: t,
-          value: sysTopics.get({ path: t }),
-          timestamp: new Date().toISOString()
-        })).filter(item => item.value !== null)
+        topics: matchingTopics
+          .map((t) => ({
+            topic: t,
+            value: sysTopics.get({ path: t }),
+            timestamp: new Date().toISOString()
+          }))
+          .filter((item) => item.value !== null)
       };
     }
 
@@ -144,7 +154,9 @@ export class SysTopicsResource {
       const value = sysTopics.get({ path: topic });
 
       if (value !== null && value !== undefined) {
-        logger.trace(`[MQTT-Broker-Interop-Plugin:Resources]: Individual $SYS topic - topic: ${topic}, value: ${value}`);
+        logger.trace(
+          `[MQTT-Broker-Interop-Plugin:Resources]: Individual $SYS topic - topic: ${topic}, value: ${value}`
+        );
         return {
           topic: topic,
           value: value,
@@ -154,7 +166,9 @@ export class SysTopicsResource {
     }
 
     // Unknown topic
-    logger.debug(`[MQTT-Broker-Interop-Plugin:Resources]: Unknown topic request - ${topic}`);
+    logger.debug(
+      `[MQTT-Broker-Interop-Plugin:Resources]: Unknown topic request - ${topic}`
+    );
     return null;
   }
 
@@ -175,7 +189,9 @@ export class SysTopicsResource {
    */
   async *subscribe(request) {
     const topic = request.path || request.url;
-    logger.info(`[MQTT-Broker-Interop-Plugin:Resources]: SysTopicsResource subscribe - topic: ${topic}`);
+    logger.info(
+      `[MQTT-Broker-Interop-Plugin:Resources]: SysTopicsResource subscribe - topic: ${topic}`
+    );
 
     // Yield initial value
     const initialValue = this.get(request);
@@ -186,7 +202,7 @@ export class SysTopicsResource {
     // Keep subscription alive - yield updates periodically
     // The subscription will stay open until the client unsubscribes
     while (true) {
-      await new Promise(resolve => setTimeout(resolve, 10000)); // 10 second interval
+      await new Promise((resolve) => setTimeout(resolve, 10000)); // 10 second interval
       const currentValue = this.get(request);
       if (currentValue !== null) {
         yield currentValue;
@@ -210,25 +226,33 @@ export class WildcardTopicsResource {
    */
   get(request) {
     const topic = request.path || request.url;
-    logger.trace(`[MQTT-Broker-Interop-Plugin:Resources]: WildcardTopicsResource GET request - topic: ${topic}`);
+    logger.trace(
+      `[MQTT-Broker-Interop-Plugin:Resources]: WildcardTopicsResource GET request - topic: ${topic}`
+    );
 
     // Handle /# wildcard - return all non-$SYS topics
     if (topic === '/#' || topic === '#' || topic === '/') {
       // Filter out any $SYS topics that might be in the registry
-      const allTopics = Array.from(topicRegistry).filter(t => !t.startsWith('$SYS/'));
-      logger.debug(`[MQTT-Broker-Interop-Plugin:Resources]: WildcardTopicsResource returning topics - count: ${allTopics.length}`);
+      const allTopics = Array.from(topicRegistry).filter(
+        (t) => !t.startsWith('$SYS/')
+      );
+      logger.debug(
+        `[MQTT-Broker-Interop-Plugin:Resources]: WildcardTopicsResource returning topics - count: ${allTopics.length}`
+      );
 
       return {
         pattern: '/#',
         count: allTopics.length,
-        topics: allTopics.map(t => ({
+        topics: allTopics.map((t) => ({
           topic: t,
           timestamp: new Date().toISOString()
         }))
       };
     }
 
-    logger.trace(`[MQTT-Broker-Interop-Plugin:Resources]: WildcardTopicsResource no match - topic: ${topic}`);
+    logger.trace(
+      `[MQTT-Broker-Interop-Plugin:Resources]: WildcardTopicsResource no match - topic: ${topic}`
+    );
     return null;
   }
 
@@ -240,7 +264,9 @@ export class WildcardTopicsResource {
    */
   async *subscribe(request) {
     const topic = request.path || request.url;
-    logger.info(`[MQTT-Broker-Interop-Plugin:Resources]: WildcardTopicsResource subscribe - topic: ${topic}`);
+    logger.info(
+      `[MQTT-Broker-Interop-Plugin:Resources]: WildcardTopicsResource subscribe - topic: ${topic}`
+    );
 
     // Yield initial value
     const initialValue = this.get(request);
@@ -251,7 +277,7 @@ export class WildcardTopicsResource {
     // Keep subscription alive - yield updates periodically
     // The subscription will stay open until the client unsubscribes
     while (true) {
-      await new Promise(resolve => setTimeout(resolve, 10000)); // 10 second interval
+      await new Promise((resolve) => setTimeout(resolve, 10000)); // 10 second interval
       const currentValue = this.get(request);
       if (currentValue !== null) {
         yield currentValue;
@@ -279,11 +305,15 @@ export class DynamicTopicsResource {
    */
   async get(request) {
     const topic = request.path || request.url;
-    logger.debug(`[MQTT-Broker-Interop-Plugin:Resources]: DynamicTopicsResource GET request - topic: ${topic}`);
+    logger.debug(
+      `[MQTT-Broker-Interop-Plugin:Resources]: DynamicTopicsResource GET request - topic: ${topic}`
+    );
 
     // Don't handle wildcard requests - let HarperDB handle those natively
     if (topic.includes('#') || topic.includes('+')) {
-      logger.debug(`[MQTT-Broker-Interop-Plugin:Resources]: Wildcard topic, deferring to HarperDB: ${topic}`);
+      logger.debug(
+        `[MQTT-Broker-Interop-Plugin:Resources]: Wildcard topic, deferring to HarperDB: ${topic}`
+      );
       return null;
     }
 
@@ -296,7 +326,9 @@ export class DynamicTopicsResource {
     // Check if table exists (don't create on GET)
     const table = globalThis.tables?.[tableName];
     if (!table) {
-      logger.debug(`[MQTT-Broker-Interop-Plugin:Resources]: Table '${tableName}' not found for topic: ${topic}`);
+      logger.debug(
+        `[MQTT-Broker-Interop-Plugin:Resources]: Table '${tableName}' not found for topic: ${topic}`
+      );
       return { topic, messages: [] };
     }
 
@@ -307,10 +339,15 @@ export class DynamicTopicsResource {
         messages.push(message);
       }
 
-      logger.debug(`[MQTT-Broker-Interop-Plugin:Resources]: Returning ${messages.length} messages for topic: ${topic}`);
+      logger.debug(
+        `[MQTT-Broker-Interop-Plugin:Resources]: Returning ${messages.length} messages for topic: ${topic}`
+      );
       return { topic, messages };
     } catch (error) {
-      logger.error(`[MQTT-Broker-Interop-Plugin:Resources]: Error reading messages:`, error);
+      logger.error(
+        '[MQTT-Broker-Interop-Plugin:Resources]: Error reading messages:',
+        error
+      );
       return { topic, messages: [] };
     }
   }
@@ -323,11 +360,15 @@ export class DynamicTopicsResource {
    */
   async *subscribe(request) {
     const topic = request.path || request.url;
-    logger.info(`[MQTT-Broker-Interop-Plugin:Resources]: DynamicTopicsResource subscribe - topic: ${topic}`);
+    logger.info(
+      `[MQTT-Broker-Interop-Plugin:Resources]: DynamicTopicsResource subscribe - topic: ${topic}`
+    );
 
     // For wildcard subscriptions, defer to HarperDB's built-in wildcard handling
     if (topic.includes('#') || topic.includes('+')) {
-      logger.info(`[MQTT-Broker-Interop-Plugin:Resources]: Wildcard subscription, deferring to HarperDB: ${topic}`);
+      logger.info(
+        `[MQTT-Broker-Interop-Plugin:Resources]: Wildcard subscription, deferring to HarperDB: ${topic}`
+      );
       // Don't yield anything - let HarperDB handle it
       return;
     }
@@ -338,10 +379,14 @@ export class DynamicTopicsResource {
     const table = globalThis.tables?.[tableName];
 
     if (!table) {
-      logger.info(`[MQTT-Broker-Interop-Plugin:Resources]: Table not yet created for ${topic}, will be created on first publish`);
+      logger.info(
+        `[MQTT-Broker-Interop-Plugin:Resources]: Table not yet created for ${topic}, will be created on first publish`
+      );
     }
 
-    logger.info(`[MQTT-Broker-Interop-Plugin:Resources]: Subscription active for topic: ${topic}`);
+    logger.info(
+      `[MQTT-Broker-Interop-Plugin:Resources]: Subscription active for topic: ${topic}`
+    );
 
     // Yield initial acknowledgment
     yield {
@@ -352,7 +397,7 @@ export class DynamicTopicsResource {
 
     // Keep subscription alive with periodic updates
     while (true) {
-      await new Promise(resolve => setTimeout(resolve, 30000));
+      await new Promise((resolve) => setTimeout(resolve, 30000));
       yield {
         topic: topic,
         timestamp: new Date().toISOString(),
@@ -370,7 +415,9 @@ export class DynamicTopicsResource {
 export class AllTopicsResource {
   async get(request) {
     const topic = request.path || request.url;
-    logger.trace(`[MQTT-Broker-Interop-Plugin:Resources]: AllTopicsResource GET - ${topic}`);
+    logger.trace(
+      `[MQTT-Broker-Interop-Plugin:Resources]: AllTopicsResource GET - ${topic}`
+    );
 
     // Return empty - let HarperDB's native topic matching find tables
     return { topic, status: 'ok' };
@@ -378,7 +425,9 @@ export class AllTopicsResource {
 
   async *subscribe(request) {
     const topic = request.path || request.url;
-    logger.info(`[MQTT-Broker-Interop-Plugin:Resources]: AllTopicsResource subscribe - ${topic}`);
+    logger.info(
+      `[MQTT-Broker-Interop-Plugin:Resources]: AllTopicsResource subscribe - ${topic}`
+    );
 
     // Accept the subscription - HarperDB will route messages from matching tables
     yield {
@@ -389,7 +438,7 @@ export class AllTopicsResource {
 
     // Keep alive
     while (true) {
-      await new Promise(resolve => setTimeout(resolve, 60000));
+      await new Promise((resolve) => setTimeout(resolve, 60000));
       yield {
         topic: topic,
         timestamp: new Date().toISOString(),
@@ -417,6 +466,8 @@ export function getMetrics() {
     heap: { ...metrics.heap },
     load: JSON.parse(JSON.stringify(metrics.load))
   };
-  logger.debug(`[MQTT-Broker-Interop-Plugin:Resources]: Returning metrics snapshot - clients: ${metricsSnapshot.clients.connected}, messages: ${metricsSnapshot.messages.received}`);
+  logger.debug(
+    `[MQTT-Broker-Interop-Plugin:Resources]: Returning metrics snapshot - clients: ${metricsSnapshot.clients.connected}, messages: ${metricsSnapshot.messages.received}`
+  );
   return metricsSnapshot;
 }

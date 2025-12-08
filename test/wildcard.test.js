@@ -7,7 +7,13 @@ import './helpers/setup-logger.js';
 
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert';
-import { topicRegistry, tableRegistry, setupMqttMonitoring, createTableForTopic, metrics } from '../src/mqtt.js';
+import {
+  topicRegistry,
+  tableRegistry,
+  setupMqttMonitoring,
+  createTableForTopic,
+  metrics
+} from '../src/mqtt.js';
 import { SysTopicsResource, WildcardTopicsResource } from '../src/resources.js';
 
 describe('Wildcard Topics', () => {
@@ -33,9 +39,9 @@ describe('Wildcard Topics', () => {
 
       assert.equal(result.pattern, '/#');
       assert.equal(result.count, 5);
-      assert.ok(result.topics.some(t => t.topic === 'home/temperature'));
-      assert.ok(result.topics.some(t => t.topic === 'office/light'));
-      assert.ok(!result.topics.some(t => t.topic.startsWith('$SYS/')));
+      assert.ok(result.topics.some((t) => t.topic === 'home/temperature'));
+      assert.ok(result.topics.some((t) => t.topic === 'office/light'));
+      assert.ok(!result.topics.some((t) => t.topic.startsWith('$SYS/')));
     });
 
     it('returns empty list when no topics published', () => {
@@ -61,15 +67,19 @@ describe('Wildcard Topics', () => {
 
       assert.equal(result.pattern, '$SYS/#');
       assert.ok(result.count > 0);
-      assert.ok(result.topics.some(t => t.topic === '$SYS/broker/version'));
-      assert.ok(result.topics.some(t => t.topic === '$SYS/broker/clients/connected'));
-      assert.ok(result.topics.some(t => t.topic === '$SYS/broker/uptime'));
+      assert.ok(result.topics.some((t) => t.topic === '$SYS/broker/version'));
+      assert.ok(
+        result.topics.some((t) => t.topic === '$SYS/broker/clients/connected')
+      );
+      assert.ok(result.topics.some((t) => t.topic === '$SYS/broker/uptime'));
     });
 
     it('includes values for $SYS topics', () => {
       const result = sysResource.get({ path: '$SYS/#' });
 
-      const versionTopic = result.topics.find(t => t.topic === '$SYS/broker/version');
+      const versionTopic = result.topics.find(
+        (t) => t.topic === '$SYS/broker/version'
+      );
       assert.ok(versionTopic);
       assert.ok(versionTopic.value);
       assert.ok(versionTopic.timestamp);
@@ -82,9 +92,15 @@ describe('Wildcard Topics', () => {
 
       assert.equal(result.pattern, '$SYS/broker/clients/#');
       assert.ok(result.count > 0);
-      assert.ok(result.topics.every(t => t.topic.startsWith('$SYS/broker/clients/')));
-      assert.ok(result.topics.some(t => t.topic === '$SYS/broker/clients/connected'));
-      assert.ok(result.topics.some(t => t.topic === '$SYS/broker/clients/maximum'));
+      assert.ok(
+        result.topics.every((t) => t.topic.startsWith('$SYS/broker/clients/'))
+      );
+      assert.ok(
+        result.topics.some((t) => t.topic === '$SYS/broker/clients/connected')
+      );
+      assert.ok(
+        result.topics.some((t) => t.topic === '$SYS/broker/clients/maximum')
+      );
     });
 
     it('handles $SYS/broker/load/# wildcard', () => {
@@ -92,10 +108,12 @@ describe('Wildcard Topics', () => {
 
       assert.equal(result.pattern, '$SYS/broker/load/#');
       assert.ok(result.count > 0);
-      assert.ok(result.topics.every(t => t.topic.startsWith('$SYS/broker/load/')));
-      assert.ok(result.topics.some(t => t.topic.includes('/1min')));
-      assert.ok(result.topics.some(t => t.topic.includes('/5min')));
-      assert.ok(result.topics.some(t => t.topic.includes('/15min')));
+      assert.ok(
+        result.topics.every((t) => t.topic.startsWith('$SYS/broker/load/'))
+      );
+      assert.ok(result.topics.some((t) => t.topic.includes('/1min')));
+      assert.ok(result.topics.some((t) => t.topic.includes('/5min')));
+      assert.ok(result.topics.some((t) => t.topic.includes('/15min')));
     });
 
     it('handles $SYS/broker/messages/# wildcard', () => {
@@ -103,9 +121,15 @@ describe('Wildcard Topics', () => {
 
       assert.equal(result.pattern, '$SYS/broker/messages/#');
       assert.ok(result.count > 0);
-      assert.ok(result.topics.every(t => t.topic.startsWith('$SYS/broker/messages/')));
-      assert.ok(result.topics.some(t => t.topic === '$SYS/broker/messages/received'));
-      assert.ok(result.topics.some(t => t.topic === '$SYS/broker/messages/inflight'));
+      assert.ok(
+        result.topics.every((t) => t.topic.startsWith('$SYS/broker/messages/'))
+      );
+      assert.ok(
+        result.topics.some((t) => t.topic === '$SYS/broker/messages/received')
+      );
+      assert.ok(
+        result.topics.some((t) => t.topic === '$SYS/broker/messages/inflight')
+      );
     });
   });
 
@@ -153,8 +177,8 @@ describe('Wildcard Topics', () => {
       const result = wildcardResource.get({ path: '/#' });
 
       assert.equal(result.count, 3);
-      assert.ok(result.topics.some(t => t.topic === 'sensors/temp/living'));
-      assert.ok(result.topics.some(t => t.topic === 'lights/kitchen'));
+      assert.ok(result.topics.some((t) => t.topic === 'sensors/temp/living'));
+      assert.ok(result.topics.some((t) => t.topic === 'lights/kitchen'));
     });
 
     it('does not include $SYS topics in /# wildcard', () => {
@@ -164,8 +188,8 @@ describe('Wildcard Topics', () => {
 
       const result = wildcardResource.get({ path: '/#' });
 
-      assert.ok(result.topics.some(t => t.topic === 'test/topic'));
-      assert.ok(!result.topics.some(t => t.topic.startsWith('$SYS/')));
+      assert.ok(result.topics.some((t) => t.topic === 'test/topic'));
+      assert.ok(!result.topics.some((t) => t.topic.startsWith('$SYS/')));
     });
   });
 
@@ -212,19 +236,30 @@ describe('Wildcard Topics', () => {
 
         // Manually trigger the subscription event after setup
         if (subscribeHandler) {
-          subscribeHandler([{ topic: 'integration/test/#' }], { sessionId: 'test-client' });
+          subscribeHandler([{ topic: 'integration/test/#' }], {
+            sessionId: 'test-client'
+          });
           subscribeWasCalled = true;
         }
 
         // Give async operations a moment to complete
-        await new Promise(resolve => setTimeout(resolve, 10));
+        await new Promise((resolve) => setTimeout(resolve, 10));
 
         // Verify subscription handler was invoked and tableRegistry was updated
-        assert.ok(subscribeWasCalled, 'subscribe handler should have been called');
+        assert.ok(
+          subscribeWasCalled,
+          'subscribe handler should have been called'
+        );
         // The handler should have added a table to the registry
         // For wildcard 'integration/test/#', the base topic is 'integration' which maps to mqtt_messages
-        assert.ok(tableRegistry.size > 0, 'tableRegistry should have at least one table');
-        assert.ok(tableRegistry.has('mqtt_messages'), 'tableRegistry should have mqtt_messages table');
+        assert.ok(
+          tableRegistry.size > 0,
+          'tableRegistry should have at least one table'
+        );
+        assert.ok(
+          tableRegistry.has('mqtt_messages'),
+          'tableRegistry should have mqtt_messages table'
+        );
       } finally {
         globalThis.server = originalServer;
       }

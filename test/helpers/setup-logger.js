@@ -12,7 +12,9 @@ export function createConsoleLogger(silent = false) {
   const noop = () => {};
 
   const log = (level, ...args) => {
-    if (silent) {return;}
+    if (silent) {
+      return;
+    }
     console.log(`[${level.toUpperCase()}]`, ...args);
   };
 

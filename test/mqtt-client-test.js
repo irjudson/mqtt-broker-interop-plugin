@@ -47,7 +47,9 @@ class SimpleTestClient {
               0x04: 'Connection refused: bad username or password',
               0x05: 'Connection refused: not authorized'
             };
-            console.error(`❌ Connection refused: ${errors[returnCode] || `Unknown error (${returnCode})`}`);
+            console.error(
+              `❌ Connection refused: ${errors[returnCode] || `Unknown error (${returnCode})`}`
+            );
             reject(new Error(errors[returnCode] || 'Connection refused'));
           }
         }
@@ -79,28 +81,30 @@ class SimpleTestClient {
     // Connect flags: Clean session only (no auth)
     const connectFlags = Buffer.from([0x02]); // bit 1: clean session
 
-    const keepAlive = Buffer.from([0x00, 0x3C]); // 60 seconds
+    const keepAlive = Buffer.from([0x00, 0x3c]); // 60 seconds
     const clientIdLength = Buffer.from([0x00, CLIENT_ID.length]);
     const clientIdBuffer = Buffer.from(CLIENT_ID);
 
     // Calculate total remaining length
     const remainingLength =
-      2 + protocolName.length +  // Protocol name
-      1 +                         // Protocol level
-      1 +                         // Connect flags
-      2 +                         // Keep alive
-      2 + CLIENT_ID.length;       // Client ID
+      2 +
+      protocolName.length + // Protocol name
+      1 + // Protocol level
+      1 + // Connect flags
+      2 + // Keep alive
+      2 +
+      CLIENT_ID.length; // Client ID
 
     const packet = Buffer.concat([
-      Buffer.from([0x10]),                      // CONNECT packet type
-      Buffer.from([remainingLength]),           // Remaining length
+      Buffer.from([0x10]), // CONNECT packet type
+      Buffer.from([remainingLength]), // Remaining length
       Buffer.from([0x00, protocolName.length]), // Protocol name length
-      protocolName,                             // 'MQTT'
-      protocolLevel,                            // Version 4
-      connectFlags,                             // Flags
-      keepAlive,                                // Keep alive
-      clientIdLength,                           // Client ID length
-      clientIdBuffer                            // Client ID
+      protocolName, // 'MQTT'
+      protocolLevel, // Version 4
+      connectFlags, // Flags
+      keepAlive, // Keep alive
+      clientIdLength, // Client ID length
+      clientIdBuffer // Client ID
     ]);
 
     console.log(`Sending CONNECT packet (${packet.length} bytes)`);
@@ -130,7 +134,7 @@ class SimpleTestClient {
   }
 
   handlePacket(data) {
-    const type = (data[0] >> 4) & 0x0F;
+    const type = (data[0] >> 4) & 0x0f;
 
     switch (type) {
     case 0x03: // PUBLISH
@@ -139,7 +143,7 @@ class SimpleTestClient {
     case 0x09: // SUBACK
       console.log('✅ Subscription acknowledged');
       break;
-    case 0x0D: // PINGRESP
+    case 0x0d: // PINGRESP
       console.log('Ping response received');
       break;
     }
@@ -154,7 +158,7 @@ class SimpleTestClient {
     let byte;
     do {
       byte = data[offset++];
-      remainingLength += (byte & 0x7F) * multiplier;
+      remainingLength += (byte & 0x7f) * multiplier;
       multiplier *= 128;
     } while ((byte & 0x80) !== 0);
 
@@ -175,13 +179,13 @@ class SimpleTestClient {
 
   ping() {
     if (this.connected) {
-      this.socket.write(Buffer.from([0xC0, 0x00]));
+      this.socket.write(Buffer.from([0xc0, 0x00]));
     }
   }
 
   disconnect() {
     if (this.connected) {
-      this.socket.write(Buffer.from([0xE0, 0x00]));
+      this.socket.write(Buffer.from([0xe0, 0x00]));
       this.socket.end();
       this.connected = false;
       console.log('Disconnected');
@@ -219,7 +223,9 @@ async function test() {
 
     // Listen for messages
     console.log('\n🎧 Listening for messages...');
-    console.log('(Messages should appear every 10 seconds if plugin is working)\n');
+    console.log(
+      '(Messages should appear every 10 seconds if plugin is working)\n'
+    );
 
     // Run for 60 seconds then exit
     setTimeout(() => {
@@ -228,7 +234,6 @@ async function test() {
       client.disconnect();
       process.exit(0);
     }, 60000);
-
   } catch (error) {
     console.error('Test failed:', error.message);
     process.exit(1);

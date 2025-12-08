@@ -70,11 +70,11 @@ mosquitto_sub -h localhost -t '$SYS/broker/messages/received'
 #### Using MQTT.js
 
 ```javascript
-const mqtt = require('mqtt');
-const client = mqtt.connect('mqtt://localhost:1883');
+const mqtt = require("mqtt");
+const client = mqtt.connect("mqtt://localhost:1883");
 
-client.subscribe('$SYS/#');
-client.on('message', (topic, message) => {
+client.subscribe("$SYS/#");
+client.on("message", (topic, message) => {
   console.log(`${topic}: ${message.toString()}`);
 });
 ```
@@ -97,10 +97,12 @@ client.loop_forever()
 ### Available Metrics
 
 #### Static Topics (sent once on connection)
+
 - `$SYS/broker/version` - HarperDB version
 - `$SYS/broker/timestamp` - Broker start time (ISO 8601)
 
 #### Client Metrics
+
 - `$SYS/broker/clients/connected` - Currently connected clients
 - `$SYS/broker/clients/disconnected` - Disconnected clients with persistent sessions
 - `$SYS/broker/clients/maximum` - Peak concurrent connections
@@ -108,6 +110,7 @@ client.loop_forever()
 - `$SYS/broker/clients/expired` - Expired persistent sessions
 
 #### Message Metrics
+
 - `$SYS/broker/messages/received` - Total messages received
 - `$SYS/broker/messages/sent` - Total messages sent
 - `$SYS/broker/messages/inflight` - QoS > 0 messages awaiting acknowledgment
@@ -117,23 +120,28 @@ client.loop_forever()
 - `$SYS/broker/publish/messages/dropped` - Dropped messages
 
 #### Bandwidth Metrics
+
 - `$SYS/broker/bytes/received` - Total bytes received
 - `$SYS/broker/bytes/sent` - Total bytes sent
 
 #### Storage Metrics
+
 - `$SYS/broker/store/messages/count` - Messages in storage
 - `$SYS/broker/store/messages/bytes` - Storage size in bytes
 
 #### Subscription Metrics
+
 - `$SYS/broker/subscriptions/count` - Active subscriptions
 - `$SYS/broker/retained messages/count` - Retained messages
 
 #### System Metrics
+
 - `$SYS/broker/heap/current` - Current heap memory usage (bytes)
 - `$SYS/broker/heap/maximum` - Peak heap memory usage (bytes)
 - `$SYS/broker/uptime` - Broker uptime in seconds
 
 #### Load Averages (1/5/15 minute intervals)
+
 - `$SYS/broker/load/connections/*min` - Connection rate
 - `$SYS/broker/load/messages/received/*min` - Message receive rate
 - `$SYS/broker/load/messages/sent/*min` - Message send rate
@@ -147,9 +155,11 @@ client.loop_forever()
 The plugin uses two HarperDB tables:
 
 ### mqtt_topics
+
 Stores all MQTT messages with subscription tracking. Exported as MQTT root path (`/`).
 
 ### mqtt_sys_metrics
+
 Stores $SYS metric values. Exported as `$SYS` path for MQTT subscriptions.
 
 Both tables are automatically created from `schema/schema.graphql`.
@@ -169,11 +179,11 @@ Current test coverage: **47/47 tests passing** ✅
 More tests are always welcome! The test suite uses Node.js built-in test runner:
 
 ```javascript
-import { describe, it } from 'node:test';
-import assert from 'node:assert';
+import { describe, it } from "node:test";
+import assert from "node:assert";
 
-describe('Your Feature', () => {
-  it('does something', () => {
+describe("Your Feature", () => {
+  it("does something", () => {
     assert.equal(actual, expected);
   });
 });
@@ -200,6 +210,7 @@ Contributions are welcome! Please:
 5. Submit a pull request
 
 **Areas especially welcome:**
+
 - Additional test coverage
 - Performance improvements
 - Documentation enhancements

@@ -4,11 +4,11 @@
  */
 
 // Access global server and logger
-const {server} = globalThis;
+const { server } = globalThis;
 const logger = server?.logger || console;
 
 // Access tables from globalThis (it's a global, not an import)
-const tables = globalThis.tables;
+const {tables} = globalThis;
 
 // Load average time windows
 const TIME_WINDOWS = {
@@ -32,15 +32,17 @@ let sysMetricsTable = null;
  */
 export class MqttMetrics {
   constructor() {
-    logger.info('[MQTT-Broker-Interop-Plugin:MQTT]: Initializing MQTT metrics tracking');
+    logger.info(
+      '[MQTT-Broker-Interop-Plugin:MQTT]: Initializing MQTT metrics tracking'
+    );
     this.startTime = new Date();
 
     this.clients = {
       connected: 0,
-      disconnected: 0,  // persistent sessions
+      disconnected: 0, // persistent sessions
       maximum: 0,
       total: 0,
-      expired: 0  // expired persistent sessions
+      expired: 0 // expired persistent sessions
     };
 
     this.messages = {
@@ -48,9 +50,9 @@ export class MqttMetrics {
       sent: 0,
       publishReceived: 0,
       publishSent: 0,
-      publishDropped: 0,  // dropped messages
-      inflight: 0,  // QoS > 0 messages awaiting acknowledgment
-      stored: 0  // messages in storage
+      publishDropped: 0, // dropped messages
+      inflight: 0, // QoS > 0 messages awaiting acknowledgment
+      stored: 0 // messages in storage
     };
 
     this.bytes = {
@@ -100,7 +102,10 @@ export class MqttMetrics {
     };
 
     // Update system metrics periodically (delayed start after table initialization)
-    this._metricsInterval = setInterval(() => this._updateSystemMetrics(), 10000); // Update every 10 seconds
+    this._metricsInterval = setInterval(
+      () => this._updateSystemMetrics(),
+      10000
+    ); // Update every 10 seconds
     // Allow Node.js to exit if this is the only thing keeping it alive (important for tests)
     if (this._metricsInterval.unref) {
       this._metricsInterval.unref();
@@ -122,13 +127,17 @@ export class MqttMetrics {
   }
 
   onConnect(clientId, persistent) {
-    logger.debug(`[MQTT-Broker-Interop-Plugin:MQTT]: Client connected - clientId: ${clientId}, persistent: ${persistent}`);
+    logger.debug(
+      `[MQTT-Broker-Interop-Plugin:MQTT]: Client connected - clientId: ${clientId}, persistent: ${persistent}`
+    );
     this.clients.connected++;
     this.clients.total = this.clients.connected + this.clients.disconnected;
 
     if (this.clients.connected > this.clients.maximum) {
       this.clients.maximum = this.clients.connected;
-      logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: New maximum clients reached: ${this.clients.maximum}`);
+      logger.info(
+        `[MQTT-Broker-Interop-Plugin:MQTT]: New maximum clients reached: ${this.clients.maximum}`
+      );
     }
 
     // Upsert metrics to table
@@ -138,7 +147,9 @@ export class MqttMetrics {
   }
 
   onDisconnect(clientId, persistent) {
-    logger.debug(`[MQTT-Broker-Interop-Plugin:MQTT]: Client disconnected - clientId: ${clientId}, persistent: ${persistent}`);
+    logger.debug(
+      `[MQTT-Broker-Interop-Plugin:MQTT]: Client disconnected - clientId: ${clientId}, persistent: ${persistent}`
+    );
     if (this.clients.connected > 0) {
       this.clients.connected--;
     }
@@ -151,47 +162,70 @@ export class MqttMetrics {
 
     // Upsert metrics to table
     upsertSysMetric('$SYS/broker/clients/connected', this.clients.connected);
-    upsertSysMetric('$SYS/broker/clients/disconnected', this.clients.disconnected);
+    upsertSysMetric(
+      '$SYS/broker/clients/disconnected',
+      this.clients.disconnected
+    );
   }
 
   onPublishReceived(message, byteCount) {
-    logger.trace(`[MQTT-Broker-Interop-Plugin:MQTT]: Message received - topic: ${message.topic}, bytes: ${byteCount}`);
+    logger.trace(
+      `[MQTT-Broker-Interop-Plugin:MQTT]: Message received - topic: ${message.topic}, bytes: ${byteCount}`
+    );
     this.messages.received++;
     this.messages.publishReceived++;
     this.bytes.received += byteCount;
 
     // Upsert metrics to table
     upsertSysMetric('$SYS/broker/messages/received', this.messages.received);
-    upsertSysMetric('$SYS/broker/publish/messages/received', this.messages.publishReceived);
+    upsertSysMetric(
+      '$SYS/broker/publish/messages/received',
+      this.messages.publishReceived
+    );
     upsertSysMetric('$SYS/broker/bytes/received', this.bytes.received);
   }
 
   onPublishSent(message, byteCount) {
-    logger.trace(`[MQTT-Broker-Interop-Plugin:MQTT]: Message sent - topic: ${message.topic}, bytes: ${byteCount}`);
+    logger.trace(
+      `[MQTT-Broker-Interop-Plugin:MQTT]: Message sent - topic: ${message.topic}, bytes: ${byteCount}`
+    );
     this.messages.sent++;
     this.messages.publishSent++;
     this.bytes.sent += byteCount;
 
     // Upsert metrics to table
     upsertSysMetric('$SYS/broker/messages/sent', this.messages.sent);
-    upsertSysMetric('$SYS/broker/publish/messages/sent', this.messages.publishSent);
+    upsertSysMetric(
+      '$SYS/broker/publish/messages/sent',
+      this.messages.publishSent
+    );
     upsertSysMetric('$SYS/broker/bytes/sent', this.bytes.sent);
   }
 
   onSubscribe(clientId, topic) {
-    logger.debug(`[MQTT-Broker-Interop-Plugin:MQTT]: Client subscribed - clientId: ${clientId}, topic: ${topic}`);
+    logger.debug(
+      `[MQTT-Broker-Interop-Plugin:MQTT]: Client subscribed - clientId: ${clientId}, topic: ${topic}`
+    );
     this.subscriptions.count++;
 
     // Upsert metrics to table
-    upsertSysMetric('$SYS/broker/subscriptions/count', this.subscriptions.count);
+    upsertSysMetric(
+      '$SYS/broker/subscriptions/count',
+      this.subscriptions.count
+    );
   }
 
   onUnsubscribe(clientId, topic) {
-    logger.debug(`[MQTT-Broker-Interop-Plugin:MQTT]: Client unsubscribed - clientId: ${clientId}, topic: ${topic}`);
+    logger.debug(
+      `[MQTT-Broker-Interop-Plugin:MQTT]: Client unsubscribed - clientId: ${clientId}, topic: ${topic}`
+    );
     this.subscriptions.count--;
 
     // Upsert metrics to table
-    upsertSysMetric('$SYS/broker/subscriptions/count', this.subscriptions.count);
+    upsertSysMetric(
+      '$SYS/broker/subscriptions/count',
+      this.subscriptions.count
+    );
   }
 
   onRetainedMessageAdded() {
@@ -216,12 +250,16 @@ export class MqttMetrics {
   }
 
   onMessageInflight(delta) {
-    logger.trace(`[MQTT-Broker-Interop-Plugin:MQTT]: Message inflight delta: ${delta}, total: ${this.messages.inflight + delta}`);
+    logger.trace(
+      `[MQTT-Broker-Interop-Plugin:MQTT]: Message inflight delta: ${delta}, total: ${this.messages.inflight + delta}`
+    );
     this.messages.inflight += delta;
   }
 
   onMessageStored(delta) {
-    logger.trace(`[MQTT-Broker-Interop-Plugin:MQTT]: Message stored delta: ${delta}, total: ${this.messages.stored + delta}`);
+    logger.trace(
+      `[MQTT-Broker-Interop-Plugin:MQTT]: Message stored delta: ${delta}, total: ${this.messages.stored + delta}`
+    );
     this.messages.stored += delta;
   }
 
@@ -242,18 +280,38 @@ export class MqttMetrics {
     const now = Date.now();
 
     // Add current sample
-    this._loadSamples.connections.push({ time: now, value: this.clients.connected });
-    this._loadSamples.messagesReceived.push({ time: now, value: this.messages.received });
-    this._loadSamples.messagesSent.push({ time: now, value: this.messages.sent });
-    this._loadSamples.bytesReceived.push({ time: now, value: this.bytes.received });
+    this._loadSamples.connections.push({
+      time: now,
+      value: this.clients.connected
+    });
+    this._loadSamples.messagesReceived.push({
+      time: now,
+      value: this.messages.received
+    });
+    this._loadSamples.messagesSent.push({
+      time: now,
+      value: this.messages.sent
+    });
+    this._loadSamples.bytesReceived.push({
+      time: now,
+      value: this.bytes.received
+    });
     this._loadSamples.bytesSent.push({ time: now, value: this.bytes.sent });
-    this._loadSamples.publishReceived.push({ time: now, value: this.messages.publishReceived });
-    this._loadSamples.publishSent.push({ time: now, value: this.messages.publishSent });
+    this._loadSamples.publishReceived.push({
+      time: now,
+      value: this.messages.publishReceived
+    });
+    this._loadSamples.publishSent.push({
+      time: now,
+      value: this.messages.publishSent
+    });
 
     // Clean old samples (keep 15 minutes worth)
     const cutoff = now - 15 * 60 * 1000;
-    Object.keys(this._loadSamples).forEach(key => {
-      this._loadSamples[key] = this._loadSamples[key].filter(s => s.time > cutoff);
+    Object.keys(this._loadSamples).forEach((key) => {
+      this._loadSamples[key] = this._loadSamples[key].filter(
+        (s) => s.time > cutoff
+      );
     });
 
     // Calculate averages
@@ -268,33 +326,96 @@ export class MqttMetrics {
     upsertSysMetric('$SYS/broker/uptime', uptime);
 
     // Upsert load averages
-    upsertSysMetric('$SYS/broker/load/connections/1min', this.load.connections.oneMin);
-    upsertSysMetric('$SYS/broker/load/connections/5min', this.load.connections.fiveMin);
-    upsertSysMetric('$SYS/broker/load/connections/15min', this.load.connections.fifteenMin);
+    upsertSysMetric(
+      '$SYS/broker/load/connections/1min',
+      this.load.connections.oneMin
+    );
+    upsertSysMetric(
+      '$SYS/broker/load/connections/5min',
+      this.load.connections.fiveMin
+    );
+    upsertSysMetric(
+      '$SYS/broker/load/connections/15min',
+      this.load.connections.fifteenMin
+    );
 
-    upsertSysMetric('$SYS/broker/load/messages/received/1min', this.load.messagesReceived.oneMin);
-    upsertSysMetric('$SYS/broker/load/messages/received/5min', this.load.messagesReceived.fiveMin);
-    upsertSysMetric('$SYS/broker/load/messages/received/15min', this.load.messagesReceived.fifteenMin);
+    upsertSysMetric(
+      '$SYS/broker/load/messages/received/1min',
+      this.load.messagesReceived.oneMin
+    );
+    upsertSysMetric(
+      '$SYS/broker/load/messages/received/5min',
+      this.load.messagesReceived.fiveMin
+    );
+    upsertSysMetric(
+      '$SYS/broker/load/messages/received/15min',
+      this.load.messagesReceived.fifteenMin
+    );
 
-    upsertSysMetric('$SYS/broker/load/messages/sent/1min', this.load.messagesSent.oneMin);
-    upsertSysMetric('$SYS/broker/load/messages/sent/5min', this.load.messagesSent.fiveMin);
-    upsertSysMetric('$SYS/broker/load/messages/sent/15min', this.load.messagesSent.fifteenMin);
+    upsertSysMetric(
+      '$SYS/broker/load/messages/sent/1min',
+      this.load.messagesSent.oneMin
+    );
+    upsertSysMetric(
+      '$SYS/broker/load/messages/sent/5min',
+      this.load.messagesSent.fiveMin
+    );
+    upsertSysMetric(
+      '$SYS/broker/load/messages/sent/15min',
+      this.load.messagesSent.fifteenMin
+    );
 
-    upsertSysMetric('$SYS/broker/load/bytes/received/1min', this.load.bytesReceived.oneMin);
-    upsertSysMetric('$SYS/broker/load/bytes/received/5min', this.load.bytesReceived.fiveMin);
-    upsertSysMetric('$SYS/broker/load/bytes/received/15min', this.load.bytesReceived.fifteenMin);
+    upsertSysMetric(
+      '$SYS/broker/load/bytes/received/1min',
+      this.load.bytesReceived.oneMin
+    );
+    upsertSysMetric(
+      '$SYS/broker/load/bytes/received/5min',
+      this.load.bytesReceived.fiveMin
+    );
+    upsertSysMetric(
+      '$SYS/broker/load/bytes/received/15min',
+      this.load.bytesReceived.fifteenMin
+    );
 
-    upsertSysMetric('$SYS/broker/load/bytes/sent/1min', this.load.bytesSent.oneMin);
-    upsertSysMetric('$SYS/broker/load/bytes/sent/5min', this.load.bytesSent.fiveMin);
-    upsertSysMetric('$SYS/broker/load/bytes/sent/15min', this.load.bytesSent.fifteenMin);
+    upsertSysMetric(
+      '$SYS/broker/load/bytes/sent/1min',
+      this.load.bytesSent.oneMin
+    );
+    upsertSysMetric(
+      '$SYS/broker/load/bytes/sent/5min',
+      this.load.bytesSent.fiveMin
+    );
+    upsertSysMetric(
+      '$SYS/broker/load/bytes/sent/15min',
+      this.load.bytesSent.fifteenMin
+    );
 
-    upsertSysMetric('$SYS/broker/load/publish/received/1min', this.load.publishReceived.oneMin);
-    upsertSysMetric('$SYS/broker/load/publish/received/5min', this.load.publishReceived.fiveMin);
-    upsertSysMetric('$SYS/broker/load/publish/received/15min', this.load.publishReceived.fifteenMin);
+    upsertSysMetric(
+      '$SYS/broker/load/publish/received/1min',
+      this.load.publishReceived.oneMin
+    );
+    upsertSysMetric(
+      '$SYS/broker/load/publish/received/5min',
+      this.load.publishReceived.fiveMin
+    );
+    upsertSysMetric(
+      '$SYS/broker/load/publish/received/15min',
+      this.load.publishReceived.fifteenMin
+    );
 
-    upsertSysMetric('$SYS/broker/load/publish/sent/1min', this.load.publishSent.oneMin);
-    upsertSysMetric('$SYS/broker/load/publish/sent/5min', this.load.publishSent.fiveMin);
-    upsertSysMetric('$SYS/broker/load/publish/sent/15min', this.load.publishSent.fifteenMin);
+    upsertSysMetric(
+      '$SYS/broker/load/publish/sent/1min',
+      this.load.publishSent.oneMin
+    );
+    upsertSysMetric(
+      '$SYS/broker/load/publish/sent/5min',
+      this.load.publishSent.fiveMin
+    );
+    upsertSysMetric(
+      '$SYS/broker/load/publish/sent/15min',
+      this.load.publishSent.fifteenMin
+    );
   }
 
   _calculateLoadAverages() {
@@ -302,26 +423,34 @@ export class MqttMetrics {
 
     // Helper function to calculate load average for a time window
     const calculatePeriodAverage = (samples, cutoffTime, minutes) => {
-      const periodSamples = samples.filter(s => s.time > cutoffTime);
+      const periodSamples = samples.filter((s) => s.time > cutoffTime);
       if (periodSamples.length > 0) {
-        const delta = periodSamples[periodSamples.length - 1].value - periodSamples[0].value;
+        const delta =
+          periodSamples[periodSamples.length - 1].value -
+          periodSamples[0].value;
         return delta / minutes;
       }
       return 0;
     };
 
     // Calculate load averages for each metric across all time windows
-    Object.keys(this._loadSamples).forEach(metric => {
+    Object.keys(this._loadSamples).forEach((metric) => {
       const samples = this._loadSamples[metric];
 
       this.load[metric].oneMin = calculatePeriodAverage(
-        samples, now - TIME_WINDOWS.ONE_MIN.ms, TIME_WINDOWS.ONE_MIN.minutes
+        samples,
+        now - TIME_WINDOWS.ONE_MIN.ms,
+        TIME_WINDOWS.ONE_MIN.minutes
       );
       this.load[metric].fiveMin = calculatePeriodAverage(
-        samples, now - TIME_WINDOWS.FIVE_MIN.ms, TIME_WINDOWS.FIVE_MIN.minutes
+        samples,
+        now - TIME_WINDOWS.FIVE_MIN.ms,
+        TIME_WINDOWS.FIVE_MIN.minutes
       );
       this.load[metric].fifteenMin = calculatePeriodAverage(
-        samples, now - TIME_WINDOWS.FIFTEEN_MIN.ms, TIME_WINDOWS.FIFTEEN_MIN.minutes
+        samples,
+        now - TIME_WINDOWS.FIFTEEN_MIN.ms,
+        TIME_WINDOWS.FIFTEEN_MIN.minutes
       );
     });
   }
@@ -386,42 +515,64 @@ const SYS_TOPIC_MAP = {
   '$SYS/broker/heap/current size': (m) => m.heap.current,
   '$SYS/broker/heap/maximum': (m) => m.heap.maximum,
   '$SYS/broker/heap/maximum size': (m) => m.heap.maximum,
-  '$SYS/broker/uptime': (m) => Math.floor((Date.now() - m.startTime.getTime()) / 1000),
+  '$SYS/broker/uptime': (m) =>
+    Math.floor((Date.now() - m.startTime.getTime()) / 1000),
 
   // Load averages - Connections
-  '$SYS/broker/load/connections/1min': (m) => Math.round(m.load.connections.oneMin),
-  '$SYS/broker/load/connections/5min': (m) => Math.round(m.load.connections.fiveMin),
-  '$SYS/broker/load/connections/15min': (m) => Math.round(m.load.connections.fifteenMin),
+  '$SYS/broker/load/connections/1min': (m) =>
+    Math.round(m.load.connections.oneMin),
+  '$SYS/broker/load/connections/5min': (m) =>
+    Math.round(m.load.connections.fiveMin),
+  '$SYS/broker/load/connections/15min': (m) =>
+    Math.round(m.load.connections.fifteenMin),
 
   // Load averages - Messages received
-  '$SYS/broker/load/messages/received/1min': (m) => Math.round(m.load.messagesReceived.oneMin),
-  '$SYS/broker/load/messages/received/5min': (m) => Math.round(m.load.messagesReceived.fiveMin),
-  '$SYS/broker/load/messages/received/15min': (m) => Math.round(m.load.messagesReceived.fifteenMin),
+  '$SYS/broker/load/messages/received/1min': (m) =>
+    Math.round(m.load.messagesReceived.oneMin),
+  '$SYS/broker/load/messages/received/5min': (m) =>
+    Math.round(m.load.messagesReceived.fiveMin),
+  '$SYS/broker/load/messages/received/15min': (m) =>
+    Math.round(m.load.messagesReceived.fifteenMin),
 
   // Load averages - Messages sent
-  '$SYS/broker/load/messages/sent/1min': (m) => Math.round(m.load.messagesSent.oneMin),
-  '$SYS/broker/load/messages/sent/5min': (m) => Math.round(m.load.messagesSent.fiveMin),
-  '$SYS/broker/load/messages/sent/15min': (m) => Math.round(m.load.messagesSent.fifteenMin),
+  '$SYS/broker/load/messages/sent/1min': (m) =>
+    Math.round(m.load.messagesSent.oneMin),
+  '$SYS/broker/load/messages/sent/5min': (m) =>
+    Math.round(m.load.messagesSent.fiveMin),
+  '$SYS/broker/load/messages/sent/15min': (m) =>
+    Math.round(m.load.messagesSent.fifteenMin),
 
   // Load averages - Bytes received
-  '$SYS/broker/load/bytes/received/1min': (m) => Math.round(m.load.bytesReceived.oneMin),
-  '$SYS/broker/load/bytes/received/5min': (m) => Math.round(m.load.bytesReceived.fiveMin),
-  '$SYS/broker/load/bytes/received/15min': (m) => Math.round(m.load.bytesReceived.fifteenMin),
+  '$SYS/broker/load/bytes/received/1min': (m) =>
+    Math.round(m.load.bytesReceived.oneMin),
+  '$SYS/broker/load/bytes/received/5min': (m) =>
+    Math.round(m.load.bytesReceived.fiveMin),
+  '$SYS/broker/load/bytes/received/15min': (m) =>
+    Math.round(m.load.bytesReceived.fifteenMin),
 
   // Load averages - Bytes sent
-  '$SYS/broker/load/bytes/sent/1min': (m) => Math.round(m.load.bytesSent.oneMin),
-  '$SYS/broker/load/bytes/sent/5min': (m) => Math.round(m.load.bytesSent.fiveMin),
-  '$SYS/broker/load/bytes/sent/15min': (m) => Math.round(m.load.bytesSent.fifteenMin),
+  '$SYS/broker/load/bytes/sent/1min': (m) =>
+    Math.round(m.load.bytesSent.oneMin),
+  '$SYS/broker/load/bytes/sent/5min': (m) =>
+    Math.round(m.load.bytesSent.fiveMin),
+  '$SYS/broker/load/bytes/sent/15min': (m) =>
+    Math.round(m.load.bytesSent.fifteenMin),
 
   // Load averages - Publish received
-  '$SYS/broker/load/publish/received/1min': (m) => Math.round(m.load.publishReceived.oneMin),
-  '$SYS/broker/load/publish/received/5min': (m) => Math.round(m.load.publishReceived.fiveMin),
-  '$SYS/broker/load/publish/received/15min': (m) => Math.round(m.load.publishReceived.fifteenMin),
+  '$SYS/broker/load/publish/received/1min': (m) =>
+    Math.round(m.load.publishReceived.oneMin),
+  '$SYS/broker/load/publish/received/5min': (m) =>
+    Math.round(m.load.publishReceived.fiveMin),
+  '$SYS/broker/load/publish/received/15min': (m) =>
+    Math.round(m.load.publishReceived.fifteenMin),
 
   // Load averages - Publish sent
-  '$SYS/broker/load/publish/sent/1min': (m) => Math.round(m.load.publishSent.oneMin),
-  '$SYS/broker/load/publish/sent/5min': (m) => Math.round(m.load.publishSent.fiveMin),
-  '$SYS/broker/load/publish/sent/15min': (m) => Math.round(m.load.publishSent.fifteenMin),
+  '$SYS/broker/load/publish/sent/1min': (m) =>
+    Math.round(m.load.publishSent.oneMin),
+  '$SYS/broker/load/publish/sent/5min': (m) =>
+    Math.round(m.load.publishSent.fiveMin),
+  '$SYS/broker/load/publish/sent/15min': (m) =>
+    Math.round(m.load.publishSent.fifteenMin)
 };
 
 /**
@@ -441,7 +592,9 @@ export class SysTopics {
    */
   get(request) {
     const topic = request.path;
-    logger.trace(`[MQTT-Broker-Interop-Plugin:MQTT]: $SYS topic request - ${topic}`);
+    logger.trace(
+      `[MQTT-Broker-Interop-Plugin:MQTT]: $SYS topic request - ${topic}`
+    );
 
     // Use topic map for efficient lookup
     const handler = SYS_TOPIC_MAP[topic];
@@ -450,7 +603,9 @@ export class SysTopics {
     }
 
     // Unknown topic
-    logger.warn(`[MQTT-Broker-Interop-Plugin:MQTT]: Unknown $SYS topic requested - ${topic}`);
+    logger.warn(
+      `[MQTT-Broker-Interop-Plugin:MQTT]: Unknown $SYS topic requested - ${topic}`
+    );
     return null;
   }
 
@@ -485,9 +640,7 @@ export function getTableNameForTopic(topic) {
   }
 
   // Sanitize: lowercase, replace invalid chars with underscore
-  const sanitized = firstSegment
-    .toLowerCase()
-    .replace(/[^a-z0-9_]/g, '_');
+  const sanitized = firstSegment.toLowerCase().replace(/[^a-z0-9_]/g, '_');
 
   return `mqtt_${sanitized}`;
 }
@@ -507,7 +660,9 @@ export function generateMessageId() {
  */
 export function upsertSysMetric(topic, value) {
   if (!sysMetricsTable) {
-    logger.debug(`[MQTT-Broker-Interop-Plugin:MQTT]: Cannot upsert metric '${topic}' - table not initialized`);
+    logger.debug(
+      `[MQTT-Broker-Interop-Plugin:MQTT]: Cannot upsert metric '${topic}' - table not initialized`
+    );
     return;
   }
 
@@ -517,17 +672,24 @@ export function upsertSysMetric(topic, value) {
     // So we store the relative path in 'id' and full path in 'topic' for queries
     const relativePath = topic.startsWith('$SYS/') ? topic.substring(5) : topic;
 
-    logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: Upserting $SYS metric - topic='${topic}', relativePath='${relativePath}', value='${value}'`);
+    logger.info(
+      `[MQTT-Broker-Interop-Plugin:MQTT]: Upserting $SYS metric - topic='${topic}', relativePath='${relativePath}', value='${value}'`
+    );
 
     sysMetricsTable.put({
-      id: relativePath,  // Relative path as ID (e.g., "broker/clients/connected")
-      topic: topic,  // Full path for backwards compatibility with queries
+      id: relativePath, // Relative path as ID (e.g., "broker/clients/connected")
+      topic: topic, // Full path for backwards compatibility with queries
       value: String(value),
       timestamp: new Date().toISOString()
     });
-    logger.debug(`[MQTT-Broker-Interop-Plugin:MQTT]: Upserted $SYS metric - ${topic} = ${value}`);
+    logger.debug(
+      `[MQTT-Broker-Interop-Plugin:MQTT]: Upserted $SYS metric - ${topic} = ${value}`
+    );
   } catch (error) {
-    logger.error(`[MQTT-Broker-Interop-Plugin:MQTT]: Failed to upsert $SYS metric '${topic}':`, error);
+    logger.error(
+      `[MQTT-Broker-Interop-Plugin:MQTT]: Failed to upsert $SYS metric '${topic}':`,
+      error
+    );
   }
 }
 
@@ -537,7 +699,9 @@ export function upsertSysMetric(topic, value) {
  */
 export function setSysMetricsTable(table) {
   sysMetricsTable = table;
-  logger.info('[MQTT-Broker-Interop-Plugin:MQTT]: $SYS metrics table reference set');
+  logger.info(
+    '[MQTT-Broker-Interop-Plugin:MQTT]: $SYS metrics table reference set'
+  );
 
   // Trigger initial system metrics update now that table is available
   metrics._updateSystemMetrics();
@@ -552,11 +716,15 @@ export async function createTableForTopic(topic, tableName) {
   // Check if table exists in global tables
   const existingTable = globalThis.tables?.[tableName];
   if (existingTable) {
-    logger.debug(`[MQTT-Broker-Interop-Plugin:MQTT]: Table '${tableName}' already exists`);
+    logger.debug(
+      `[MQTT-Broker-Interop-Plugin:MQTT]: Table '${tableName}' already exists`
+    );
     return existingTable;
   }
 
-  logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: Creating table '${tableName}' for topic '${topic}'`);
+  logger.info(
+    `[MQTT-Broker-Interop-Plugin:MQTT]: Creating table '${tableName}' for topic '${topic}'`
+  );
 
   try {
     // Use an existing table's operation() method to create the new table
@@ -564,7 +732,9 @@ export async function createTableForTopic(topic, tableName) {
     const anyTable = tables.mqtt_topics || globalThis.tables?.mqtt_topics;
 
     if (!anyTable) {
-      logger.error(`[MQTT-Broker-Interop-Plugin:MQTT]: No existing table found to call operation() on`);
+      logger.error(
+        '[MQTT-Broker-Interop-Plugin:MQTT]: No existing table found to call operation() on'
+      );
       return null;
     }
 
@@ -575,19 +745,28 @@ export async function createTableForTopic(topic, tableName) {
       primary_key: 'id'
     });
 
-    logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: Table '${tableName}' created successfully`);
+    logger.info(
+      `[MQTT-Broker-Interop-Plugin:MQTT]: Table '${tableName}' created successfully`
+    );
 
     // Return the newly created table
     return globalThis.tables?.[tableName] || tables[tableName];
   } catch (error) {
     // Ignore "already exists" errors (idempotent)
     if (error.message && error.message.includes('already exists')) {
-      logger.debug(`[MQTT-Broker-Interop-Plugin:MQTT]: Table '${tableName}' already exists (caught during creation)`);
+      logger.debug(
+        `[MQTT-Broker-Interop-Plugin:MQTT]: Table '${tableName}' already exists (caught during creation)`
+      );
       return globalThis.tables?.[tableName] || databases.data[tableName];
     }
 
-    logger.error(`[MQTT-Broker-Interop-Plugin:MQTT]: Failed to create table '${tableName}':`, error);
-    logger.error(`[MQTT-Broker-Interop-Plugin:MQTT]: Error message: ${error.message}`);
+    logger.error(
+      `[MQTT-Broker-Interop-Plugin:MQTT]: Failed to create table '${tableName}':`,
+      error
+    );
+    logger.error(
+      `[MQTT-Broker-Interop-Plugin:MQTT]: Error message: ${error.message}`
+    );
     return null;
   }
 }
@@ -602,7 +781,9 @@ export async function writeMessageToTable(tableName, message) {
     // Write directly to mqtt_topics table
     const mqttTopicsTable = globalThis.tables?.mqtt_topics;
     if (!mqttTopicsTable) {
-      logger.debug(`[MQTT-Broker-Interop-Plugin:MQTT]: mqtt_topics table not available`);
+      logger.debug(
+        '[MQTT-Broker-Interop-Plugin:MQTT]: mqtt_topics table not available'
+      );
       return;
     }
 
@@ -624,7 +805,7 @@ export async function writeMessageToTable(tableName, message) {
 
     // id field must be the topic path for MQTT routing (HarperDB uses id as MQTT topic)
     await mqttTopicsTable.put({
-      id: message.topic,  // Use topic path as ID for MQTT routing
+      id: message.topic, // Use topic path as ID for MQTT routing
       topic: message.topic,
       payload: payloadStr,
       qos: message.qos,
@@ -634,9 +815,13 @@ export async function writeMessageToTable(tableName, message) {
       subscription_count: subscriptionCount
     });
 
-    logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: Wrote message to mqtt_topics - topic: ${message.topic}, payload: ${payloadStr}`);
+    logger.info(
+      `[MQTT-Broker-Interop-Plugin:MQTT]: Wrote message to mqtt_topics - topic: ${message.topic}, payload: ${payloadStr}`
+    );
   } catch (error) {
-    logger.error(`[MQTT-Broker-Interop-Plugin:MQTT]: Write error: ${error.message}`);
+    logger.error(
+      `[MQTT-Broker-Interop-Plugin:MQTT]: Write error: ${error.message}`
+    );
   }
 }
 
@@ -649,9 +834,13 @@ export function updateRetainedStatus(tableName, hasRetained) {
   const tableEntry = tableRegistry.get(tableName);
   if (tableEntry) {
     tableEntry.hasRetained = hasRetained;
-    logger.trace(`[MQTT-Broker-Interop-Plugin:MQTT]: Updated retained status for table '${tableName}': ${hasRetained}`);
+    logger.trace(
+      `[MQTT-Broker-Interop-Plugin:MQTT]: Updated retained status for table '${tableName}': ${hasRetained}`
+    );
   } else {
-    logger.debug(`[MQTT-Broker-Interop-Plugin:MQTT]: Cannot update retained status - table '${tableName}' not in registry`);
+    logger.debug(
+      `[MQTT-Broker-Interop-Plugin:MQTT]: Cannot update retained status - table '${tableName}' not in registry`
+    );
   }
 }
 
@@ -660,7 +849,9 @@ export function updateRetainedStatus(tableName, hasRetained) {
  * @param {string} tableName - Table name to cleanup
  */
 export async function cleanupTable(tableName) {
-  logger.debug(`[MQTT-Broker-Interop-Plugin:MQTT]: Cleaning up tracking for table '${tableName}'`);
+  logger.debug(
+    `[MQTT-Broker-Interop-Plugin:MQTT]: Cleaning up tracking for table '${tableName}'`
+  );
   tableRegistry.delete(tableName);
 }
 
@@ -676,13 +867,17 @@ export async function cleanupTable(tableName) {
 export function setupMqttMonitoring(server, _logger) {
   logger.info('[MQTT-Broker-Interop-Plugin:MQTT]: Setting up MQTT monitoring');
   if (!server?.mqtt?.events) {
-    logger.warn('[MQTT-Broker-Interop-Plugin:MQTT]: MQTT events not available on this thread');
+    logger.warn(
+      '[MQTT-Broker-Interop-Plugin:MQTT]: MQTT events not available on this thread'
+    );
     return;
   }
 
   harperServer = server;
   const mqttEvents = server.mqtt.events;
-  logger.debug('[MQTT-Broker-Interop-Plugin:MQTT]: MQTT events object obtained');
+  logger.debug(
+    '[MQTT-Broker-Interop-Plugin:MQTT]: MQTT events object obtained'
+  );
 
   // Monitor client connections
   mqttEvents.on('connected', (session, socket) => {
@@ -690,7 +885,9 @@ export function setupMqttMonitoring(server, _logger) {
     const username = session?.user?.username;
     // In MQTT, clean flag determines if session is persistent (clean=false means persistent)
     const clean = session?.clean ?? true; // Default to true (non-persistent) if not specified
-    logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: Client connected - clientId: ${clientId}, username: ${username}, clean: ${clean}`);
+    logger.info(
+      `[MQTT-Broker-Interop-Plugin:MQTT]: Client connected - clientId: ${clientId}, username: ${username}, clean: ${clean}`
+    );
 
     // REMOVED: Wrapping session.publish breaks HarperDB's MQTT validation
     // session.publish is for OUTGOING messages (table → MQTT subscribers)
@@ -704,14 +901,18 @@ export function setupMqttMonitoring(server, _logger) {
   mqttEvents.on('disconnected', (session, _socket) => {
     // Handle case where session is undefined (connection failed before auth)
     if (!session || !session.sessionId) {
-      logger.debug('[MQTT-Broker-Interop-Plugin:MQTT]: Disconnect event with no session (pre-auth disconnect)');
+      logger.debug(
+        '[MQTT-Broker-Interop-Plugin:MQTT]: Disconnect event with no session (pre-auth disconnect)'
+      );
       return;
     }
 
     const clientId = session.sessionId;
     // Check if session was persistent - sessionWasPresent indicates persistent session
     const persistent = session.sessionWasPresent || false;
-    logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: Client disconnected - clientId: ${clientId}, persistent: ${persistent}`);
+    logger.info(
+      `[MQTT-Broker-Interop-Plugin:MQTT]: Client disconnected - clientId: ${clientId}, persistent: ${persistent}`
+    );
     metrics.onDisconnect(clientId, persistent);
   });
 
@@ -724,19 +925,25 @@ export function setupMqttMonitoring(server, _logger) {
   mqttEvents.on('subscribe', (subscriptions, session) => {
     const clientId = session?.sessionId;
     if (Array.isArray(subscriptions)) {
-      subscriptions.forEach(sub => {
+      subscriptions.forEach((sub) => {
         const topic = typeof sub === 'string' ? sub : sub?.topic;
-        logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: Subscription - clientId: ${clientId}, topic: ${topic}`);
+        logger.info(
+          `[MQTT-Broker-Interop-Plugin:MQTT]: Subscription - clientId: ${clientId}, topic: ${topic}`
+        );
 
         // Skip empty topics
         if (!topic) {
-          logger.debug('[MQTT-Broker-Interop-Plugin:MQTT]: Skipping empty topic subscription');
+          logger.debug(
+            '[MQTT-Broker-Interop-Plugin:MQTT]: Skipping empty topic subscription'
+          );
           return;
         }
 
         // Handle $SYS topics - don't create tables
         if (topic.startsWith('$SYS/') || topic === '$SYS/#') {
-          logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: $SYS topic subscription detected - clientId: ${clientId}, topic: ${topic}`);
+          logger.info(
+            `[MQTT-Broker-Interop-Plugin:MQTT]: $SYS topic subscription detected - clientId: ${clientId}, topic: ${topic}`
+          );
           metrics.onSubscribe(clientId, topic);
           onSysTopicSubscribe(clientId, topic);
           return;
@@ -753,9 +960,12 @@ export function setupMqttMonitoring(server, _logger) {
                 let existingData = {};
 
                 if (existing) {
-                  const doesExist = typeof existing.doesExist === 'function' ? existing.doesExist() : existing.doesExist;
+                  const doesExist =
+                    typeof existing.doesExist === 'function'
+                      ? existing.doesExist()
+                      : existing.doesExist;
                   if (doesExist || (existing.id && existing.id === topic)) {
-                    subscriptionCount = (existing.subscription_count || 0);
+                    subscriptionCount = existing.subscription_count || 0;
                     existingData = {
                       payload: existing.payload,
                       qos: existing.qos,
@@ -780,9 +990,14 @@ export function setupMqttMonitoring(server, _logger) {
                   client_id: existingData.client_id || clientId
                 });
 
-                logger.debug(`[MQTT-Broker-Interop-Plugin:MQTT]: Updated subscription_count for ${topic}: ${subscriptionCount}`);
+                logger.debug(
+                  `[MQTT-Broker-Interop-Plugin:MQTT]: Updated subscription_count for ${topic}: ${subscriptionCount}`
+                );
               } catch (error) {
-                logger.error(`[MQTT-Broker-Interop-Plugin:MQTT]: Failed to update subscription_count for ${topic}:`, error);
+                logger.error(
+                  `[MQTT-Broker-Interop-Plugin:MQTT]: Failed to update subscription_count for ${topic}:`,
+                  error
+                );
               }
             });
           }
@@ -790,7 +1005,9 @@ export function setupMqttMonitoring(server, _logger) {
 
         // Handle wildcards - extract base topic and create table for it
         if (topic.includes('#') || topic.includes('+')) {
-          logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: Wildcard subscription - topic: ${topic}`);
+          logger.info(
+            `[MQTT-Broker-Interop-Plugin:MQTT]: Wildcard subscription - topic: ${topic}`
+          );
           metrics.onSubscribe(clientId, topic);
 
           // Extract base topic (e.g., "testtopic/#" -> "testtopic")
@@ -798,10 +1015,15 @@ export function setupMqttMonitoring(server, _logger) {
           if (baseTopic && baseTopic !== '#' && baseTopic !== '+') {
             const tableName = getTableNameForTopic(baseTopic);
             if (!tableRegistry.has(tableName)) {
-              logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: Creating table for wildcard base - table: ${tableName}, baseTopic: ${baseTopic}`);
+              logger.info(
+                `[MQTT-Broker-Interop-Plugin:MQTT]: Creating table for wildcard base - table: ${tableName}, baseTopic: ${baseTopic}`
+              );
               // Fire-and-forget table creation with explicit error handling
-              createTableForTopic(baseTopic, tableName).catch(error => {
-                logger.error(`[MQTT-Broker-Interop-Plugin:MQTT]: Failed to create table for wildcard base '${baseTopic}':`, error);
+              createTableForTopic(baseTopic, tableName).catch((error) => {
+                logger.error(
+                  `[MQTT-Broker-Interop-Plugin:MQTT]: Failed to create table for wildcard base '${baseTopic}':`,
+                  error
+                );
               });
               tableRegistry.set(tableName, {
                 tableName,
@@ -821,10 +1043,15 @@ export function setupMqttMonitoring(server, _logger) {
 
         // Create table if doesn't exist (check registry first)
         if (!tableRegistry.has(tableName)) {
-          logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: Creating new table for subscription - table: ${tableName}, topic: ${topic}`);
+          logger.info(
+            `[MQTT-Broker-Interop-Plugin:MQTT]: Creating new table for subscription - table: ${tableName}, topic: ${topic}`
+          );
           // Fire-and-forget table creation with explicit error handling
-          createTableForTopic(topic, tableName).catch(error => {
-            logger.error(`[MQTT-Broker-Interop-Plugin:MQTT]: Failed to create table for subscription '${topic}':`, error);
+          createTableForTopic(topic, tableName).catch((error) => {
+            logger.error(
+              `[MQTT-Broker-Interop-Plugin:MQTT]: Failed to create table for subscription '${topic}':`,
+              error
+            );
           });
           tableRegistry.set(tableName, {
             tableName,
@@ -836,7 +1063,9 @@ export function setupMqttMonitoring(server, _logger) {
         // Increment subscription count
         const entry = tableRegistry.get(tableName);
         entry.subscriptionCount++;
-        logger.debug(`[MQTT-Broker-Interop-Plugin:MQTT]: Incremented subscription count for table '${tableName}': ${entry.subscriptionCount}`);
+        logger.debug(
+          `[MQTT-Broker-Interop-Plugin:MQTT]: Incremented subscription count for table '${tableName}': ${entry.subscriptionCount}`
+        );
 
         metrics.onSubscribe(clientId, topic);
       });
@@ -847,20 +1076,26 @@ export function setupMqttMonitoring(server, _logger) {
   mqttEvents.on('unsubscribe', (unsubscriptions, session) => {
     const clientId = session?.sessionId;
     if (Array.isArray(unsubscriptions)) {
-      unsubscriptions.forEach(topic => {
-        logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: Unsubscription - clientId: ${clientId}, topic: ${topic}`);
+      unsubscriptions.forEach((topic) => {
+        logger.info(
+          `[MQTT-Broker-Interop-Plugin:MQTT]: Unsubscription - clientId: ${clientId}, topic: ${topic}`
+        );
         metrics.onUnsubscribe(clientId, topic);
 
         // Skip $SYS topics
         if (topic && (topic.startsWith('$SYS/') || topic === '$SYS/#')) {
-          logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: $SYS topic unsubscription detected - clientId: ${clientId}, topic: ${topic}`);
+          logger.info(
+            `[MQTT-Broker-Interop-Plugin:MQTT]: $SYS topic unsubscription detected - clientId: ${clientId}, topic: ${topic}`
+          );
           onSysTopicUnsubscribe(clientId, topic);
           return;
         }
 
         // Skip wildcards
         if (topic && (topic.includes('#') || topic.includes('+'))) {
-          logger.debug(`[MQTT-Broker-Interop-Plugin:MQTT]: Wildcard unsubscription - topic: ${topic}`);
+          logger.debug(
+            `[MQTT-Broker-Interop-Plugin:MQTT]: Wildcard unsubscription - topic: ${topic}`
+          );
           return;
         }
 
@@ -876,14 +1111,16 @@ export function setupMqttMonitoring(server, _logger) {
             try {
               const existing = await mqttTopicsTable.get(topic);
               if (existing && existing.doesExist && existing.doesExist()) {
-                let subscriptionCount = (existing.subscription_count || 0);
+                let subscriptionCount = existing.subscription_count || 0;
                 if (subscriptionCount > 0) {
                   subscriptionCount--;
 
                   // Delete record if no subscribers and not retained
                   if (subscriptionCount === 0 && !existing.retain) {
                     await mqttTopicsTable.delete(topic);
-                    logger.debug(`[MQTT-Broker-Interop-Plugin:MQTT]: Deleted record for ${topic} (no subscribers, not retained)`);
+                    logger.debug(
+                      `[MQTT-Broker-Interop-Plugin:MQTT]: Deleted record for ${topic} (no subscribers, not retained)`
+                    );
                   } else {
                     // Keep record but update subscription count
                     await mqttTopicsTable.put({
@@ -897,12 +1134,17 @@ export function setupMqttMonitoring(server, _logger) {
                       subscription_count: subscriptionCount
                     });
 
-                    logger.debug(`[MQTT-Broker-Interop-Plugin:MQTT]: Decremented subscription_count for ${topic}: ${subscriptionCount}`);
+                    logger.debug(
+                      `[MQTT-Broker-Interop-Plugin:MQTT]: Decremented subscription_count for ${topic}: ${subscriptionCount}`
+                    );
                   }
                 }
               }
             } catch (error) {
-              logger.error(`[MQTT-Broker-Interop-Plugin:MQTT]: Failed to decrement subscription_count for ${topic}:`, error);
+              logger.error(
+                `[MQTT-Broker-Interop-Plugin:MQTT]: Failed to decrement subscription_count for ${topic}:`,
+                error
+              );
             }
           });
         }
@@ -913,17 +1155,25 @@ export function setupMqttMonitoring(server, _logger) {
 
         if (tableEntry) {
           tableEntry.subscriptionCount--;
-          logger.debug(`[MQTT-Broker-Interop-Plugin:MQTT]: Decremented subscription count for table '${tableName}': ${tableEntry.subscriptionCount}`);
+          logger.debug(
+            `[MQTT-Broker-Interop-Plugin:MQTT]: Decremented subscription count for table '${tableName}': ${tableEntry.subscriptionCount}`
+          );
 
           // Cleanup only if no subscribers AND no retained messages
           if (tableEntry.subscriptionCount === 0 && !tableEntry.hasRetained) {
-            logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: Table '${tableName}' is now inactive, cleaning up`);
+            logger.info(
+              `[MQTT-Broker-Interop-Plugin:MQTT]: Table '${tableName}' is now inactive, cleaning up`
+            );
             cleanupTable(tableName);
           } else if (tableEntry.subscriptionCount === 0) {
-            logger.info(`[MQTT-Broker-Interop-Plugin:MQTT]: Table '${tableName}' has no subscribers but has retained messages, keeping alive`);
+            logger.info(
+              `[MQTT-Broker-Interop-Plugin:MQTT]: Table '${tableName}' has no subscribers but has retained messages, keeping alive`
+            );
           }
         } else {
-          logger.debug(`[MQTT-Broker-Interop-Plugin:MQTT]: Unsubscribe from topic '${topic}' - table '${tableName}' not in registry`);
+          logger.debug(
+            `[MQTT-Broker-Interop-Plugin:MQTT]: Unsubscribe from topic '${topic}' - table '${tableName}' not in registry`
+          );
         }
       });
     }
@@ -933,17 +1183,23 @@ export function setupMqttMonitoring(server, _logger) {
   if (mqttEvents.on) {
     mqttEvents.on('retained-added', (packet) => {
       const topic = packet?.topic;
-      logger.debug(`[MQTT-Broker-Interop-Plugin:MQTT]: Retained message added - topic: ${topic}`);
+      logger.debug(
+        `[MQTT-Broker-Interop-Plugin:MQTT]: Retained message added - topic: ${topic}`
+      );
       metrics.onRetainedMessageAdded();
     });
 
     mqttEvents.on('retained-removed', (topic) => {
-      logger.debug(`[MQTT-Broker-Interop-Plugin:MQTT]: Retained message removed - topic: ${topic}`);
+      logger.debug(
+        `[MQTT-Broker-Interop-Plugin:MQTT]: Retained message removed - topic: ${topic}`
+      );
       metrics.onRetainedMessageRemoved();
     });
   }
 
-  logger.info('[MQTT-Broker-Interop-Plugin:MQTT]: MQTT event monitoring setup complete');
+  logger.info(
+    '[MQTT-Broker-Interop-Plugin:MQTT]: MQTT event monitoring setup complete'
+  );
 }
 
 /*

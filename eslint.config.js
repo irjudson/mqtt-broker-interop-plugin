@@ -41,17 +41,17 @@ export default [
       // Best Practices
       'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
       'no-console': 'off', // Allow console for logging
-      'eqeqeq': ['error', 'always'],
-      'curly': ['error', 'all'],
+      eqeqeq: ['error', 'always'],
+      curly: ['error', 'all'],
       'no-var': 'error',
       'prefer-const': 'error',
       'prefer-arrow-callback': 'error',
       'arrow-body-style': ['error', 'as-needed'],
 
       // Style
-      'indent': ['error', 2],
-      'quotes': ['error', 'single', { avoidEscape: true }],
-      'semi': ['error', 'always'],
+      indent: ['error', 2],
+      quotes: ['error', 'single', { avoidEscape: true }],
+      semi: ['error', 'always'],
       'comma-dangle': ['error', 'never'],
       'no-trailing-spaces': 'error',
       'eol-last': ['error', 'always'],
@@ -59,10 +59,13 @@ export default [
       // ES6+
       'prefer-template': 'error',
       'no-duplicate-imports': 'error',
-      'prefer-destructuring': ['error', {
-        array: false,
-        object: true
-      }],
+      'prefer-destructuring': [
+        'error',
+        {
+          array: false,
+          object: true
+        }
+      ],
 
       // Async
       'no-async-promise-executor': 'error',
