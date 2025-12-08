@@ -144,3 +144,6 @@ docs/WORK_SUMMARY.md
 # Git worktrees
 .worktrees/
 
+# Claude Code configuration
+.claude/
+
