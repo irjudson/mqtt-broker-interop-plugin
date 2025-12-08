@@ -10,16 +10,3 @@ graphqlSchema:
 
 jsResource:
   files: 'src/resources.js'
-# Enabled - provides catch-all AllTopicsResource for MQTT topic routing
-# Works alongside @export tables in schema.graphql
-
-# MQTT Configuration
-mqtt:
-  network:
-    port: 1883
-    securePort: 8883 # for TLS
-  webSocket: true # will also enable WS support through the default HTTP interface/port
-  mTLS: false
-  requireAuthentication: false
-
-

@@ -100,7 +100,7 @@ export class MqttMetrics {
     };
 
     // Update system metrics periodically (delayed start after table initialization)
-    this._metricsInterval = setInterval(() => this._updateSystemMetrics(), 60000); // Update every minute
+    this._metricsInterval = setInterval(() => this._updateSystemMetrics(), 10000); // Update every 10 seconds
     // Allow Node.js to exit if this is the only thing keeping it alive (important for tests)
     if (this._metricsInterval.unref) {
       this._metricsInterval.unref();
