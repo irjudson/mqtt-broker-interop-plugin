@@ -1,3 +1,5 @@
+> **Historical Project** — Developed during tenure at Harper (2025–2026). Demonstrates MQTT broker interoperability with Harper, enabling standard MQTT clients to connect. Preserved as a reference implementation.
+
 # MQTT Broker Interoperability Plugin for HarperDB
 
 Adds standard MQTT `$SYS` metrics and monitoring capabilities to HarperDB's built-in MQTT broker.
